@@ -48,6 +48,10 @@ export function middleware(request: NextRequest) {
 
   if (isStatic) return NextResponse.next();
 
+  // 카카오 로그인 콜백 허용 (login 파라미터가 있으면 통과)
+  const loginParam = request.nextUrl.searchParams.get("login");
+  if (loginParam) return NextResponse.next();
+
   return NextResponse.redirect(new URL("/coming-soon", request.url));
 }
 
