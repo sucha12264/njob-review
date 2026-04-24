@@ -29,7 +29,8 @@ function KakaoAuthButtonInner() {
         window.history.replaceState({}, "", "/");
       } catch {}
     } else if (loginStatus === "fail") {
-      alert("카카오 로그인에 실패했어요.");
+      const reason = searchParams.get("reason") ?? "알 수 없는 오류";
+      alert(`카카오 로그인에 실패했어요.\n\n오류: ${reason}`);
       window.history.replaceState({}, "", "/");
     } else {
       setUser(getStoredUser());

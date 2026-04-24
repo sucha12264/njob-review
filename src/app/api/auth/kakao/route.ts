@@ -25,10 +25,17 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. 액세스 토큰 발급
+    const restKey = process.env.NEXT_PUBLIC_KAKAO_REST_KEY;
+    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI;
+
+    if (!restKey || !redirectUri) {
+      throw new Error(`ENV_MISSING: restKey=${restKey}, redirectUri=${redirectUri}`);
+    }
+
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
-      client_id: process.env.NEXT_PUBLIC_KAKAO_REST_KEY!,
-      redirect_uri: process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI!,
+      client_id: restKey,
+      redirect_uri: redirectUri,
       code,
     };
     if (process.env.KAKAO_CLIENT_SECRET) {
@@ -42,7 +49,9 @@ export async function GET(req: NextRequest) {
     });
 
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) throw new Error("토큰 발급 실패");
+    if (!tokenData.access_token) {
+      throw new Error(`TOKEN_FAIL: ${JSON.stringify(tokenData)}`);
+    }
 
     // 2. 사용자 정보 조회
     const userRes = await fetch("https://kapi.kakao.com/v2/user/me", {
@@ -65,7 +74,8 @@ export async function GET(req: NextRequest) {
       new URL(`/?login=success&${params}`, req.url)
     );
   } catch (err) {
-    console.error("카카오 로그인 에러:", err);
-    return NextResponse.redirect(new URL("/?login=fail", req.url));
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("카카오 로그인 에러:", msg);
+    return NextResponse.redirect(new URL(`/?login=fail&reason=${encodeURIComponent(msg)}`, req.url));
   }
 }
