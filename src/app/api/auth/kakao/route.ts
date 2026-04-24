@@ -25,16 +25,13 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. 액세스 토큰 발급
-    const restKey = process.env.NEXT_PUBLIC_KAKAO_REST_KEY;
-    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI;
-
-    if (!restKey || !redirectUri) {
-      throw new Error(`ENV_MISSING: restKey=${restKey}, redirectUri=${redirectUri}`);
-    }
-
-    // 디버그: 키 앞 6자리 확인
-    const keyPreview = restKey.substring(0, 6) + "...";
-    console.log(`[kakao] using client_id starting with: ${keyPreview}`);
+    // NEXT_PUBLIC_ 변수는 서버에서 못 읽는 경우를 대비해 폴백 설정
+    const restKey = process.env.NEXT_PUBLIC_KAKAO_REST_KEY
+      ?? process.env.KAKAO_REST_KEY
+      ?? "ca6d3ed39713fc962d92d1c154f79092";
+    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI
+      ?? process.env.KAKAO_REDIRECT_URI
+      ?? "https://njob-review.vercel.app/api/auth/kakao";
 
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
@@ -54,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      throw new Error(`TOKEN_FAIL(key=${restKey.substring(0,6)}...): ${JSON.stringify(tokenData)}`);
+      throw new Error(`TOKEN_FAIL: ${JSON.stringify(tokenData)}`);
     }
 
     // 2. 사용자 정보 조회
