@@ -220,15 +220,13 @@ function WritePageInner() {
     let proofImageUrl: string | null = null;
 
     if (proofImage) {
-      const ext = proofImage.name.split(".").pop();
-      const path = `proofs/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("review-proofs")
-        .upload(path, proofImage, { upsert: false });
-      if (!error) {
-        const { data } = supabase.storage.from("review-proofs").getPublicUrl(path);
-        proofImageUrl = data.publicUrl;
-      }
+      try {
+        const fd = new FormData();
+        fd.append("file", proofImage);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const json = await res.json();
+        if (json.url) proofImageUrl = json.url;
+      } catch {}
     }
 
     const kakaoUser = getStoredUser();
