@@ -296,91 +296,169 @@ function FeaturedSection() {
   );
 }
 
+type DifficultyFilter = "all" | "easy" | "medium" | "hard";
+type CostFilter = "all" | "free" | "low" | "high";
+type SortFilter = "default" | "difficulty-asc" | "difficulty-desc";
+
 function DirectorySection({ externalSearch }: { externalSearch: string }) {
   const [activeCategory, setActiveCategory] = useState<"all" | HustleCategory>("all");
   const [searchQuery, setSearchQuery] = useState(externalSearch);
+  const [diffFilter, setDiffFilter] = useState<DifficultyFilter>("all");
+  const [costFilter, setCostFilter] = useState<CostFilter>("all");
+  const [sortFilter, setSortFilter] = useState<SortFilter>("default");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => { setSearchQuery(externalSearch); }, [externalSearch]);
 
   const filtered = ALL_HUSTLES.filter((h) => {
     const matchCat = activeCategory === "all" || h.category === activeCategory;
     const q = searchQuery.toLowerCase();
-    const matchSearch =
-      !q ||
-      h.name.toLowerCase().includes(q) ||
-      h.oneline.toLowerCase().includes(q) ||
-      h.category.toLowerCase().includes(q);
-    return matchCat && matchSearch;
+    const matchSearch = !q || h.name.toLowerCase().includes(q) || h.oneline.toLowerCase().includes(q) || h.category.toLowerCase().includes(q);
+    const matchDiff =
+      diffFilter === "all" ||
+      (diffFilter === "easy" && h.difficulty <= 2) ||
+      (diffFilter === "medium" && h.difficulty === 3) ||
+      (diffFilter === "hard" && h.difficulty >= 4);
+    const cost = h.startupCost ?? "";
+    const matchCost =
+      costFilter === "all" ||
+      (costFilter === "free" && cost.includes("무료")) ||
+      (costFilter === "low" && (cost.includes("소액") || cost.includes("면허") || cost.includes("이동수단") || cost.includes("가스비") || cost.includes("차량") || cost.includes("카메라") || cost.includes("장비"))) ||
+      (costFilter === "high" && (cost.includes("수백만원") || cost.includes("재고") || cost.includes("투자") || cost.includes("구매 자금") || cost.includes("티켓")));
+    return matchCat && matchSearch && matchDiff && matchCost;
+  }).sort((a, b) => {
+    if (sortFilter === "difficulty-asc") return a.difficulty - b.difficulty;
+    if (sortFilter === "difficulty-desc") return b.difficulty - a.difficulty;
+    return 0;
   });
+
+  const activeFilterCount = [diffFilter !== "all", costFilter !== "all", sortFilter !== "default"].filter(Boolean).length;
 
   return (
     <section id="directory" className="mx-auto max-w-6xl px-4 py-12">
       <div className="mb-8">
-        <h2 className="text-2xl font-black text-slate-800 mb-1">
-          📋 전체 부업 목록
-        </h2>
-        <p className="text-slate-400 text-sm">
-          클릭하면 상세 정보와 실제 후기를 볼 수 있어요
-        </p>
+        <h2 className="text-2xl font-black text-slate-800 mb-1">📋 전체 부업 목록</h2>
+        <p className="text-slate-400 text-sm">클릭하면 상세 정보와 실제 후기를 볼 수 있어요</p>
       </div>
 
-      {/* 검색창 */}
-      <div className="relative mb-5">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="부업 이름으로 검색... (예: 쿠팡파트너스, E심팔이)"
-          className="w-full pl-9 pr-10 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xl leading-none"
-          >
-            ×
-          </button>
-        )}
+      {/* 검색창 + 필터 버튼 */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="부업 이름으로 검색... (예: 쿠팡파트너스, E심팔이)"
+            className="w-full pl-9 pr-10 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+          )}
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-1.5 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+            showFilters || activeFilterCount > 0
+              ? "bg-indigo-600 text-white border-indigo-600"
+              : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"
+          }`}
+        >
+          <span>⚙️</span>
+          <span className="hidden sm:inline">필터</span>
+          {activeFilterCount > 0 && (
+            <span className="w-5 h-5 bg-white text-indigo-600 rounded-full text-xs font-black flex items-center justify-center">{activeFilterCount}</span>
+          )}
+        </button>
       </div>
+
+      {/* 상세 필터 패널 */}
+      {showFilters && (
+        <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-700">상세 필터</span>
+            {activeFilterCount > 0 && (
+              <button
+                onClick={() => { setDiffFilter("all"); setCostFilter("all"); setSortFilter("default"); }}
+                className="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+
+          {/* 난이도 */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 mb-2">난이도</p>
+            <div className="flex gap-2 flex-wrap">
+              {([["all","전체"], ["easy","🟢 입문"], ["medium","🟡 보통"], ["hard","🔴 고급"]] as [DifficultyFilter, string][]).map(([v, label]) => (
+                <button key={v} onClick={() => setDiffFilter(v)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${diffFilter === v ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 초기비용 */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 mb-2">초기 비용</p>
+            <div className="flex gap-2 flex-wrap">
+              {([["all","전체"], ["free","💚 무자본"], ["low","💛 소액"], ["high","🔴 수백만원+"]] as [CostFilter, string][]).map(([v, label]) => (
+                <button key={v} onClick={() => setCostFilter(v)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${costFilter === v ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 정렬 */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 mb-2">정렬</p>
+            <div className="flex gap-2 flex-wrap">
+              {([["default","기본순"], ["difficulty-asc","쉬운 순"], ["difficulty-desc","어려운 순"]] as [SortFilter, string][]).map(([v, label]) => (
+                <button key={v} onClick={() => setSortFilter(v)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${sortFilter === v ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 카테고리 필터 */}
       <div className="flex gap-2 flex-wrap mb-6">
-        <button
-          onClick={() => setActiveCategory("all")}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-            activeCategory === "all"
-              ? "bg-indigo-600 text-white"
-              : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"
-          }`}
-        >
+        <button onClick={() => setActiveCategory("all")}
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${activeCategory === "all" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"}`}>
           전체 {ALL_HUSTLES.length}
         </button>
         {HUSTLE_CATEGORIES.map((cat) => {
           const count = ALL_HUSTLES.filter((h) => h.category === cat).length;
           return (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                activeCategory === cat
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"
-              }`}
-            >
+            <button key={cat} onClick={() => setActiveCategory(cat)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${activeCategory === cat ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"}`}>
               {CATEGORY_EMOJI[cat]} {cat} {count}
             </button>
           );
         })}
       </div>
 
+      {/* 결과 수 */}
+      {(activeFilterCount > 0 || searchQuery) && (
+        <p className="text-sm text-slate-500 mb-4">
+          <span className="font-bold text-indigo-600">{filtered.length}개</span> 부업 조건에 맞아요
+        </p>
+      )}
+
       {/* 부업 카드 그리드 */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-4xl mb-3">🔍</p>
-          <p className="text-slate-500">
-            &quot;{searchQuery}&quot;에 해당하는 부업이 없어요
-          </p>
+          <p className="text-slate-500 mb-2">조건에 맞는 부업이 없어요</p>
+          <button onClick={() => { setDiffFilter("all"); setCostFilter("all"); setSortFilter("default"); setSearchQuery(""); setActiveCategory("all"); }}
+            className="text-sm text-indigo-500 hover:underline">필터 초기화하기</button>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
