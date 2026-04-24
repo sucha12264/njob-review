@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function GET(req: NextRequest) {
+  // IP별 Rate Limiting: 1분에 10회 제한
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+
+  const { allowed } = rateLimit(ip, 10, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too Many Requests" },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
+  }
+
   const code = req.nextUrl.searchParams.get("code");
   const error = req.nextUrl.searchParams.get("error");
 

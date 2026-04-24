@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+
+# 관리자 페이지 크롤링 차단
+Disallow: /admin
+Disallow: /api/
+
+# 악성 봇 차단
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+Sitemap: https://njob-review.vercel.app/sitemap.xml
