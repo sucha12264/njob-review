@@ -25,7 +25,7 @@ interface StoreState {
   setSort: (sort: "latest" | "likes" | "income") => void;
   setSearch: (query: string) => void;
   toggleLike: (id: string) => void;
-  addReview: (input: ReviewInput) => Promise<Review>;
+  addReview: (input: ReviewInput & { kakao_user_id?: string | null }) => Promise<Review>;
   getReviewById: (id: string) => Review | undefined;
   getReviewsByHustle: (hustleId: string) => Review[];
   filteredReviews: Review[];
@@ -116,7 +116,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [likedIds, reviews]
   );
 
-  const addReview = useCallback(async (input: ReviewInput): Promise<Review> => {
+  const addReview = useCallback(async (input: ReviewInput & { kakao_user_id?: string | null }): Promise<Review> => {
     try {
       const { data, error } = await supabase
         .from("reviews")

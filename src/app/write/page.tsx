@@ -231,7 +231,12 @@ function WritePageInner() {
       }
     }
 
-    const review = await addReview({ ...(form as ReviewInput), proof_image_url: proofImageUrl });
+    const kakaoUser = getStoredUser();
+    const review = await addReview({
+      ...(form as ReviewInput),
+      proof_image_url: proofImageUrl,
+      kakao_user_id: kakaoUser ? String(kakaoUser.id) : null,
+    } as ReviewInput & { kakao_user_id: string | null });
     router.push(`/review/${review.id}`);
   }
 
