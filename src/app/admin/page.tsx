@@ -7,6 +7,15 @@ import { INCOME_LABELS } from "@/lib/types";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "njob-admin-2026";
 
+interface Comment {
+  id: string;
+  created_at: string;
+  review_id: string;
+  nickname: string;
+  content: string;
+  kakao_user_id: string | null;
+}
+
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86400000);
@@ -19,13 +28,16 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [pw, setPw] = useState("");
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [commentSearch, setCommentSearch] = useState("");
   const [filterHustle, setFilterHustle] = useState("all");
-  const [stats, setStats] = useState({ total: 0, today: 0, withProof: 0 });
+  const [stats, setStats] = useState({ total: 0, today: 0, withProof: 0, totalComments: 0 });
   const [clickStats, setClickStats] = useState<{ hustle_name: string; count: number }[]>([]);
-  const [activeTab, setActiveTab] = useState<"reviews" | "clicks">("reviews");
+  const [activeTab, setActiveTab] = useState<"reviews" | "comments" | "clicks">("reviews");
 
   useEffect(() => {
     if (authed) loadData();
@@ -44,12 +56,26 @@ export default function AdminPage() {
       setReviews(all);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
+      // 댓글 수 가져오기
+      const { count: commentCount } = await supabase
+        .from("comments")
+        .select("*", { count: "exact", head: true });
+
       setStats({
         total: all.length,
         today: all.filter((r) => new Date(r.created_at) >= today).length,
         withProof: all.filter((r) => r.proof_image_url).length,
+        totalComments: commentCount ?? 0,
       });
     }
+
+    // 댓글 목록 로드
+    const { data: commentData } = await supabase
+      .from("comments")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (commentData) setComments(commentData as Comment[]);
 
     const { data: clicks } = await supabase.from("click_events").select("hustle_name");
     if (clicks) {
@@ -74,7 +100,17 @@ export default function AdminPage() {
     await supabase.from("comments").delete().eq("review_id", id);
     await supabase.from("reviews").delete().eq("id", id);
     setReviews((prev) => prev.filter((r) => r.id !== id));
+    setComments((prev) => prev.filter((c) => c.review_id !== id));
     setDeletingId(null);
+  }
+
+  async function deleteComment(id: string) {
+    if (!confirm("이 댓글을 삭제할까요?")) return;
+    setDeletingCommentId(id);
+    await supabase.from("comments").delete().eq("id", id);
+    setComments((prev) => prev.filter((c) => c.id !== id));
+    setStats((prev) => ({ ...prev, totalComments: Math.max(0, prev.totalComments - 1) }));
+    setDeletingCommentId(null);
   }
 
   if (!authed) {
@@ -117,6 +153,18 @@ export default function AdminPage() {
     return matchSearch && matchHustle;
   });
 
+  const filteredComments = comments.filter((c) => {
+    const q = commentSearch.toLowerCase();
+    if (!q) return true;
+    return (
+      c.nickname.toLowerCase().includes(q) ||
+      c.content.toLowerCase().includes(q)
+    );
+  });
+
+  // review_id → hustle_name 맵
+  const reviewMap = Object.fromEntries(reviews.map((r) => [r.id, r]));
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 헤더 */}
@@ -132,11 +180,12 @@ export default function AdminPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* 통계 카드 */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
             { label: "전체 후기", value: stats.total, icon: "📝", color: "text-slate-800" },
             { label: "오늘 등록", value: stats.today, icon: "🆕", color: "text-indigo-600" },
             { label: "수익 인증", value: stats.withProof, icon: "📸", color: "text-green-600" },
+            { label: "전체 댓글", value: stats.totalComments, icon: "💬", color: "text-violet-600" },
           ].map((s) => (
             <div key={s.label} className="card p-5 text-center">
               <div className="text-2xl mb-1">{s.icon}</div>
@@ -148,7 +197,7 @@ export default function AdminPage() {
 
         {/* 탭 */}
         <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
-          {(["reviews", "clicks"] as const).map((tab) => (
+          {(["reviews", "comments", "clicks"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -156,7 +205,7 @@ export default function AdminPage() {
                 activeTab === tab ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              {tab === "reviews" ? "📝 후기 관리" : "📊 클릭 통계"}
+              {tab === "reviews" ? "📝 후기 관리" : tab === "comments" ? "💬 댓글 관리" : "📊 클릭 통계"}
             </button>
           ))}
         </div>
@@ -207,6 +256,97 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* 댓글 관리 */}
+        {activeTab === "comments" && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 mb-5">
+              <input
+                type="text"
+                value={commentSearch}
+                onChange={(e) => setCommentSearch(e.target.value)}
+                placeholder="닉네임, 내용 검색..."
+                className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-indigo-400"
+              />
+              <button onClick={loadData} className="btn-primary px-5 py-2.5 text-sm">
+                새로고침
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="card p-12 text-center text-slate-400">불러오는 중...</div>
+            ) : (
+              <div className="card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">닉네임</th>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">댓글 내용</th>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">후기</th>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">날짜</th>
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {filteredComments.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
+                          댓글이 없어요
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredComments.map((c) => {
+                        const rev = reviewMap[c.review_id];
+                        return (
+                          <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">
+                              {c.nickname}
+                              {c.kakao_user_id && (
+                                <span className="ml-1.5 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-semibold">K</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 max-w-xs">
+                              <span className="line-clamp-2">{c.content}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {rev ? (
+                                <a
+                                  href={`/review/${rev.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-indigo-600 hover:underline line-clamp-1 max-w-[160px] block"
+                                >
+                                  {rev.title}
+                                </a>
+                              ) : (
+                                <span className="text-xs text-slate-300">삭제된 후기</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{timeAgo(c.created_at)}</td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => deleteComment(c.id)}
+                                disabled={deletingCommentId === c.id}
+                                className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors disabled:opacity-40"
+                              >
+                                {deletingCommentId === c.id ? "삭제 중..." : "삭제"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+                {filteredComments.length > 0 && (
+                  <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400">
+                    총 {filteredComments.length}개 댓글
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* 후기 관리 */}
