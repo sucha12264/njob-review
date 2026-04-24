@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   kakaoLogin,
@@ -10,7 +10,7 @@ import {
   type KakaoUser,
 } from "@/lib/kakaoAuth";
 
-export default function KakaoAuthButton() {
+function KakaoAuthButtonInner() {
   const [user, setUser] = useState<KakaoUser | null>(null);
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -85,5 +85,13 @@ export default function KakaoAuthButton() {
       )}
       카카오 로그인
     </button>
+  );
+}
+
+export default function KakaoAuthButton() {
+  return (
+    <Suspense fallback={<div className="w-24 h-9 bg-slate-100 rounded-lg animate-pulse" />}>
+      <KakaoAuthButtonInner />
+    </Suspense>
   );
 }

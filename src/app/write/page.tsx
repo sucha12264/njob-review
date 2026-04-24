@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
@@ -138,7 +138,7 @@ function HustleSearchPicker({
   );
 }
 
-export default function WritePage() {
+function WritePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addReview } = useStore();
@@ -515,5 +515,13 @@ export default function WritePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function WritePage() {
+  return (
+    <Suspense fallback={<div className="max-w-2xl mx-auto px-4 py-10 animate-pulse"><div className="h-8 w-48 bg-slate-100 rounded mb-6" /><div className="h-96 bg-slate-50 rounded-2xl" /></div>}>
+      <WritePageInner />
+    </Suspense>
   );
 }
