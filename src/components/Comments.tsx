@@ -24,6 +24,91 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(days / 7)}주 전`;
 }
 
+function CommentReportButton({ commentId }: { commentId: string }) {
+  const storageKey = `reported_comment_${commentId}`;
+  const [reported, setReported] = useState(
+    () => typeof window !== "undefined" && !!localStorage.getItem(storageKey)
+  );
+  const [showModal, setShowModal] = useState(false);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const REASONS = ["스팸/홍보", "욕설/비방", "허위 정보", "개인정보 노출", "기타"];
+
+  async function handleReport() {
+    if (!reason) return;
+    setSubmitting(true);
+    try {
+      await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "comment", target_id: commentId, reason }),
+      });
+    } catch {}
+    localStorage.setItem(storageKey, "1");
+    setReported(true);
+    setShowModal(false);
+  }
+
+  if (reported) {
+    return <span className="text-[10px] text-slate-300">✅ 신고됨</span>;
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        className="text-[10px] text-slate-300 hover:text-red-400 transition-colors"
+      >
+        신고
+      </button>
+
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+        >
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="font-bold text-slate-800 mb-1">댓글 신고</h3>
+            <p className="text-xs text-slate-400 mb-4">신고 사유를 선택해주세요.</p>
+            <div className="space-y-2 mb-5">
+              {REASONS.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setReason(r)}
+                  className={`w-full text-left px-4 py-2.5 rounded-xl border-2 text-sm transition-all ${
+                    reason === r
+                      ? "border-red-400 bg-red-50 text-red-700 font-semibold"
+                      : "border-slate-200 text-slate-600 hover:border-red-200"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm font-medium hover:bg-slate-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleReport}
+                disabled={!reason || submitting}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
+              >
+                {submitting ? "신고 중..." : "신고하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Comments({ reviewId }: { reviewId: string }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +178,7 @@ export default function Comments({ reviewId }: { reviewId: string }) {
   }
 
   return (
-    <div className="mt-8">
+    <div>
       <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
         💬 댓글
         {!loading && (
@@ -119,9 +204,12 @@ export default function Comments({ reviewId }: { reviewId: string }) {
         ) : (
           comments.map((c) => (
             <div key={c.id} className="bg-slate-50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-sm font-semibold text-slate-700">{c.nickname}</span>
-                <span className="text-xs text-slate-400">{timeAgo(c.created_at)}</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-700">{c.nickname}</span>
+                  <span className="text-xs text-slate-400">{timeAgo(c.created_at)}</span>
+                </div>
+                <CommentReportButton commentId={c.id} />
               </div>
               <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{c.content}</p>
             </div>
@@ -131,14 +219,15 @@ export default function Comments({ reviewId }: { reviewId: string }) {
 
       {/* 댓글 작성 폼 */}
       <form onSubmit={handleSubmit} className="border border-slate-200 rounded-xl p-4 bg-white">
-        <div className="flex gap-2 mb-3">
+        {/* 모바일: 세로 스택, 데스크탑: 가로 배치 */}
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
           <input
             type="text"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             placeholder="닉네임"
             maxLength={20}
-            className="w-28 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+            className="w-full sm:w-28 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
           />
           <div className="flex-1 relative">
             <textarea
@@ -159,7 +248,7 @@ export default function Comments({ reviewId }: { reviewId: string }) {
           <button
             type="submit"
             disabled={!nickname.trim() || !content.trim() || submitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1.5"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1.5 w-full sm:w-auto justify-center"
           >
             {submitting ? (
               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />

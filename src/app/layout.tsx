@@ -5,11 +5,50 @@ import { StoreProvider } from "@/lib/store";
 import KakaoAuthButton from "@/components/KakaoAuthButton";
 import "./globals.css";
 
+const BASE_URL = "https://njob-review.vercel.app";
+
 export const metadata: Metadata = {
-  title: "N잡 후기판 | 부업 솔직 후기 커뮤니티",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "N잡 후기판 | 부업 솔직 후기 커뮤니티",
+    template: "%s | N잡 후기판",
+  },
   description:
     "N잡러들의 솔직한 부업 경험담. 수익·난이도·만족도 실제 후기를 확인하고 내게 맞는 부업을 찾아보세요.",
-  keywords: ["N잡러", "부업 후기", "부업 추천", "투잡", "사이드잡"],
+  keywords: [
+    "N잡러", "부업 후기", "부업 추천", "투잡", "사이드잡",
+    "온라인 부업", "재택 부업", "N잡", "부업 수익", "쿠팡파트너스",
+  ],
+  authors: [{ name: "N잡 후기판" }],
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: BASE_URL,
+    siteName: "N잡 후기판",
+    title: "N잡 후기판 | 부업 솔직 후기 커뮤니티",
+    description:
+      "N잡러들의 솔직한 부업 경험담. 수익·난이도·만족도 실제 후기를 확인하고 내게 맞는 부업을 찾아보세요.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "N잡 후기판 - 부업 솔직 후기 커뮤니티",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "N잡 후기판 | 부업 솔직 후기 커뮤니티",
+    description:
+      "N잡러들의 솔직한 부업 경험담. 수익·난이도·만족도 실제 후기를 확인하고 내게 맞는 부업을 찾아보세요.",
+    images: ["/opengraph-image"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -36,7 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <span className="font-black text-slate-800 text-base leading-none block">
                     N잡 후기판
                   </span>
-                  <span className="text-[11px] text-slate-400">부업 솔직 후기 커뮤니티</span>
+                  <span className="text-[11px] text-slate-400 hidden sm:block">부업 솔직 후기 커뮤니티</span>
                 </div>
               </Link>
               <div className="flex items-center gap-2.5">
@@ -58,7 +97,51 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </header>
 
-          <main>{children}</main>
+          {/* 콘텐츠 — 모바일 바텀 nav 공간 확보 */}
+          <main className="pb-16 sm:pb-0">{children}</main>
+
+          {/* 모바일 하단 네비게이션 */}
+          <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-100 safe-area-pb">
+            <div className="flex items-center justify-around py-2">
+              <Link
+                href="/"
+                className="flex flex-col items-center gap-0.5 px-4 py-1 text-slate-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
+              >
+                <span className="text-xl">🏠</span>
+                <span className="text-[10px] font-medium">홈</span>
+              </Link>
+              <Link
+                href="/#directory"
+                className="flex flex-col items-center gap-0.5 px-4 py-1 text-slate-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
+              >
+                <span className="text-xl">📋</span>
+                <span className="text-[10px] font-medium">부업목록</span>
+              </Link>
+              <Link
+                href="/write"
+                className="flex flex-col items-center gap-0.5 px-4 py-1"
+              >
+                <div className="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg -mt-5 active:scale-95 transition-transform">
+                  <span className="text-xl">✏️</span>
+                </div>
+                <span className="text-[10px] font-medium text-indigo-600 mt-0.5">후기 쓰기</span>
+              </Link>
+              <Link
+                href="/#reviews"
+                className="flex flex-col items-center gap-0.5 px-4 py-1 text-slate-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
+              >
+                <span className="text-xl">💬</span>
+                <span className="text-[10px] font-medium">후기피드</span>
+              </Link>
+              <Link
+                href="/profile"
+                className="flex flex-col items-center gap-0.5 px-4 py-1 text-slate-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
+              >
+                <span className="text-xl">👤</span>
+                <span className="text-[10px] font-medium">내 후기</span>
+              </Link>
+            </div>
+          </nav>
 
           {/* 푸터 */}
           <footer className="bg-slate-900 text-slate-400 mt-20">

@@ -239,7 +239,7 @@ function WritePageInner() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
+    <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 animate-fade-in">
       <Link href="/" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-600 mb-6 transition-colors">
         ← 목록으로
       </Link>
