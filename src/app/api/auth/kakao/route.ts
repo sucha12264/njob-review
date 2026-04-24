@@ -32,6 +32,10 @@ export async function GET(req: NextRequest) {
       throw new Error(`ENV_MISSING: restKey=${restKey}, redirectUri=${redirectUri}`);
     }
 
+    // 디버그: 키 앞 6자리 확인
+    const keyPreview = restKey.substring(0, 6) + "...";
+    console.log(`[kakao] using client_id starting with: ${keyPreview}`);
+
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
       client_id: restKey,
@@ -50,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      throw new Error(`TOKEN_FAIL: ${JSON.stringify(tokenData)}`);
+      throw new Error(`TOKEN_FAIL(key=${restKey.substring(0,6)}...): ${JSON.stringify(tokenData)}`);
     }
 
     // 2. 사용자 정보 조회
