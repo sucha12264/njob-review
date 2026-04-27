@@ -9,6 +9,16 @@
   }
 }
 
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer components {
   .card {
     @apply bg-white rounded-2xl border border-slate-100 shadow-sm;

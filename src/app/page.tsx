@@ -12,16 +12,12 @@ import {
   type SideHustle,
 } from "@/lib/hustleData";
 
-const DIFFICULTY_DOT = (d: number) => {
-  const colors = ["", "bg-green-400", "bg-green-400", "bg-amber-400", "bg-orange-400", "bg-red-500"];
-  const labels = ["", "매우쉬움", "쉬움", "보통", "어려움", "매우어려움"];
-  return { color: colors[d], label: labels[d] };
-};
+const DIFFICULTY_LABEL = ["", "매우쉬움", "쉬움", "보통", "어려움", "매우어려움"];
+const DIFFICULTY_COLOR = ["", "text-green-500", "text-green-500", "text-amber-500", "text-orange-500", "text-red-500"];
 
 // ─── 히어로 ───────────────────────────────────────────────
-function HeroSection({ onSearch }: { onSearch: (q: string) => void }) {
+function HeroSection() {
   const { reviews } = useStore();
-  const [q, setQ] = useState("");
 
   return (
     <section className="bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-900 text-white">
@@ -38,32 +34,11 @@ function HeroSection({ onSearch }: { onSearch: (q: string) => void }) {
             한 곳에서 확인하세요
           </span>
         </h1>
-        <p className="text-indigo-300 text-sm sm:text-base mb-8">
+        <p className="text-indigo-300 text-sm sm:text-base mb-10">
           과장 없이, 직접 경험한 N잡러들의 현실 수익 이야기
         </p>
 
-        {/* 검색 */}
-        <form
-          onSubmit={(e) => { e.preventDefault(); onSearch(q); }}
-          className="flex gap-2 max-w-xl mx-auto mb-8"
-        >
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="부업 이름 검색 (예: 쿠팡파트너스, E심팔이)"
-            className="flex-1 bg-white/10 border border-white/20 text-white placeholder:text-indigo-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:bg-white/20 focus:border-white/40 transition-all"
-          />
-          <button
-            type="submit"
-            className="bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold px-6 py-3 rounded-xl transition-all text-sm flex-shrink-0"
-          >
-            검색
-          </button>
-        </form>
-
-        {/* 통계 */}
-        <div className="flex items-center justify-center gap-6 sm:gap-10">
+        <div className="flex items-center justify-center gap-6 sm:gap-12">
           {[
             { value: `${ALL_HUSTLES.length}+`, label: "등록 부업" },
             { value: `${reviews.length}+`, label: "실제 후기" },
@@ -84,16 +59,16 @@ function HeroSection({ onSearch }: { onSearch: (q: string) => void }) {
 function HustleCard({ hustle }: { hustle: SideHustle }) {
   const { reviews } = useStore();
   const reviewCount = reviews.filter((r) => r.hustle_id === hustle.id).length;
-  const dot = DIFFICULTY_DOT(hustle.difficulty);
 
   return (
     <Link
       href={`/hustle/${hustle.id}`}
-      className="card p-4 hover:border-indigo-200 hover:shadow-md transition-all duration-200 group flex flex-col gap-2"
+      className="card p-4 hover:border-indigo-200 hover:shadow-md transition-all duration-200 group flex flex-col gap-3"
     >
-      <div className="flex items-center justify-between">
-        <span className="text-2xl">{hustle.emoji}</span>
-        <div className="flex gap-1">
+      {/* 상단: 이모지 + 뱃지 */}
+      <div className="flex items-start justify-between">
+        <span className="text-3xl leading-none">{hustle.emoji}</span>
+        <div className="flex gap-1 flex-wrap justify-end">
           {hustle.isHot && (
             <span className="text-[10px] font-bold bg-red-100 text-red-500 px-1.5 py-0.5 rounded-full">🔥 HOT</span>
           )}
@@ -103,37 +78,45 @@ function HustleCard({ hustle }: { hustle: SideHustle }) {
         </div>
       </div>
 
+      {/* 수익 범위 — 가장 눈에 띄게 */}
       <div>
-        <h3 className="font-bold text-sm text-slate-800 group-hover:text-indigo-600 transition-colors leading-tight">
+        <p className="text-base font-black text-indigo-600 leading-none">{hustle.incomeRange}</p>
+        <p className="text-xs text-slate-400 mt-0.5">예상 수익</p>
+      </div>
+
+      {/* 부업명 + 카테고리 */}
+      <div>
+        <h3 className="font-bold text-sm text-slate-800 group-hover:text-indigo-600 transition-colors leading-snug">
           {hustle.name}
         </h3>
         <p className="text-xs text-slate-400 mt-0.5">{hustle.category}</p>
       </div>
 
-      <div className="mt-auto pt-2 border-t border-slate-50 flex items-center justify-between">
-        <span className="text-xs font-bold text-indigo-600">{hustle.incomeRange}</span>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <div className={`w-1.5 h-1.5 rounded-full ${dot.color}`} />
-            <span className="text-[10px] text-slate-400">{dot.label}</span>
-          </div>
-          {reviewCount > 0 && (
-            <span className="text-[10px] text-indigo-400 font-semibold">후기 {reviewCount}</span>
-          )}
-        </div>
+      {/* 하단: 난이도 + 후기 수 */}
+      <div className="mt-auto pt-2 border-t border-slate-100 flex items-center justify-between">
+        <span className={`text-xs font-medium ${DIFFICULTY_COLOR[hustle.difficulty]}`}>
+          {DIFFICULTY_LABEL[hustle.difficulty]}
+        </span>
+        {reviewCount > 0 ? (
+          <span className="text-[11px] font-semibold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">
+            💬 {reviewCount}
+          </span>
+        ) : (
+          <span className="text-[11px] text-slate-300">후기 없음</span>
+        )}
       </div>
     </Link>
   );
 }
 
 // ─── 부업 탐색 탭 ──────────────────────────────────────────
-function DirectoryTab({ searchQuery }: { searchQuery: string }) {
+function DirectoryTab() {
   const [activeCategory, setActiveCategory] = useState<"all" | HustleCategory>("all");
-  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [search, setSearch] = useState("");
 
   const filtered = ALL_HUSTLES.filter((h) => {
     const matchCat = activeCategory === "all" || h.category === activeCategory;
-    const q = (localSearch || searchQuery).toLowerCase();
+    const q = search.toLowerCase();
     const matchSearch = !q || h.name.toLowerCase().includes(q) || h.category.toLowerCase().includes(q);
     return matchCat && matchSearch;
   });
@@ -141,25 +124,34 @@ function DirectoryTab({ searchQuery }: { searchQuery: string }) {
   return (
     <div>
       {/* 검색 */}
-      <div className="relative mb-5">
+      <div className="relative mb-4">
         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
         <input
           type="text"
-          value={localSearch}
-          onChange={(e) => setLocalSearch(e.target.value)}
-          placeholder="부업 이름으로 검색..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="부업 이름으로 검색... (예: 쿠팡파트너스)"
           className="w-full pl-9 pr-10 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-white"
         />
-        {localSearch && (
-          <button onClick={() => setLocalSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xl">×</button>
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xl"
+          >
+            ×
+          </button>
         )}
       </div>
 
-      {/* 카테고리 */}
-      <div className="flex gap-2 flex-wrap mb-6">
+      {/* 카테고리 — 가로 스크롤 한 줄 */}
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-6 scrollbar-hide">
         <button
           onClick={() => setActiveCategory("all")}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${activeCategory === "all" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"}`}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            activeCategory === "all"
+              ? "bg-indigo-600 text-white"
+              : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"
+          }`}
         >
           전체 {ALL_HUSTLES.length}
         </button>
@@ -169,7 +161,11 @@ function DirectoryTab({ searchQuery }: { searchQuery: string }) {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${activeCategory === cat ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"}`}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                activeCategory === cat
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"
+              }`}
             >
               {CATEGORY_EMOJI[cat]} {cat} {count}
             </button>
@@ -181,7 +177,10 @@ function DirectoryTab({ searchQuery }: { searchQuery: string }) {
         <div className="text-center py-16">
           <p className="text-4xl mb-3">🔍</p>
           <p className="text-slate-500 mb-2">조건에 맞는 부업이 없어요</p>
-          <button onClick={() => { setLocalSearch(""); setActiveCategory("all"); }} className="text-sm text-indigo-500 hover:underline">
+          <button
+            onClick={() => { setSearch(""); setActiveCategory("all"); }}
+            className="text-sm text-indigo-500 hover:underline"
+          >
             초기화하기
           </button>
         </div>
@@ -218,7 +217,12 @@ function ReviewTab() {
             className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 bg-white"
           />
           {searchQuery && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">×</button>
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"
+            >
+              ×
+            </button>
           )}
         </div>
         <div className="flex gap-1">
@@ -226,7 +230,11 @@ function ReviewTab() {
             <button
               key={opt.value}
               onClick={() => setSort(opt.value)}
-              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${sortBy === opt.value ? "bg-slate-800 text-white" : "bg-white border border-slate-200 text-slate-500 hover:border-slate-400"}`}
+              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                sortBy === opt.value
+                  ? "bg-slate-800 text-white"
+                  : "bg-white border border-slate-200 text-slate-500 hover:border-slate-400"
+              }`}
             >
               {opt.label}
             </button>
@@ -235,11 +243,12 @@ function ReviewTab() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="card p-5 animate-pulse">
-              <div className="h-5 w-3/4 bg-slate-100 rounded mb-2" />
-              <div className="h-4 w-full bg-slate-100 rounded" />
+              <div className="h-5 w-3/4 bg-slate-100 rounded mb-3" />
+              <div className="h-4 w-full bg-slate-100 rounded mb-2" />
+              <div className="h-4 w-2/3 bg-slate-100 rounded" />
             </div>
           ))}
         </div>
@@ -253,7 +262,8 @@ function ReviewTab() {
           <Link href="/write" className="btn-primary inline-block">후기 쓰기 →</Link>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        /* 1열(모바일) → 2열(PC) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredReviews.map((review) => (
             <ReviewCard key={review.id} review={review} />
           ))}
@@ -297,39 +307,40 @@ function PartnerBanner() {
 type Tab = "directory" | "reviews";
 
 export default function Home() {
+  const { reviews } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>("directory");
-  const [heroSearch, setHeroSearch] = useState("");
-
-  function handleHeroSearch(q: string) {
-    setHeroSearch(q);
-    setActiveTab("directory");
-    setTimeout(() => {
-      document.getElementById("main-content")?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
-  }
 
   return (
     <div>
-      <HeroSection onSearch={handleHeroSearch} />
+      <HeroSection />
 
       {/* 탭 네비게이션 */}
       <div className="sticky top-0 z-30 bg-white border-b border-slate-100 shadow-sm">
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex">
             {([
-              { id: "directory", label: "📋 부업 탐색" },
-              { id: "reviews", label: "💬 후기 피드" },
-            ] as { id: Tab; label: string }[]).map((tab) => (
+              { id: "directory" as Tab, label: "📋 부업 탐색", badge: ALL_HUSTLES.length },
+              { id: "reviews" as Tab, label: "💬 후기 피드", badge: reviews.length },
+            ]).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-5 py-4 text-sm font-bold border-b-2 transition-all ${
                   activeTab === tab.id
                     ? "border-indigo-600 text-indigo-600"
                     : "border-transparent text-slate-400 hover:text-slate-600"
                 }`}
               >
                 {tab.label}
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                    activeTab === tab.id
+                      ? "bg-indigo-100 text-indigo-600"
+                      : "bg-slate-100 text-slate-400"
+                  }`}
+                >
+                  {tab.badge}
+                </span>
               </button>
             ))}
             <div className="ml-auto flex items-center pr-1">
@@ -342,8 +353,8 @@ export default function Home() {
       </div>
 
       {/* 탭 콘텐츠 */}
-      <div id="main-content" className="mx-auto max-w-6xl px-4 py-8">
-        {activeTab === "directory" && <DirectoryTab searchQuery={heroSearch} />}
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        {activeTab === "directory" && <DirectoryTab />}
         {activeTab === "reviews" && <ReviewTab />}
       </div>
 
