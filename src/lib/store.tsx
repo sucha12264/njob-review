@@ -16,11 +16,13 @@ import type { Review, ReviewInput, IncomeRange } from "./types";
 interface StoreState {
   reviews: Review[];
   likedIds: Set<string>;
-  filterCategory: string;   // "all" | HustleCategory
-  filterHustleId: string;   // "all" | specific hustle id
+  filterCategory: string;
+  filterHustleId: string;
   sortBy: "latest" | "likes" | "income";
   searchQuery: string;
   loading: boolean;
+  activeTab: "directory" | "reviews";
+  setActiveTab: (tab: "directory" | "reviews") => void;
   setFilterCategory: (cat: string) => void;
   setFilterHustleId: (id: string) => void;
   setSort: (sort: "latest" | "likes" | "income") => void;
@@ -44,6 +46,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sortBy, setSortBy] = useState<"latest" | "likes" | "income">("latest");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTabState] = useState<"directory" | "reviews">("directory");
+  const setActiveTab = useCallback((tab: "directory" | "reviews") => setActiveTabState(tab), []);
 
   useEffect(() => {
     async function loadReviews() {
@@ -224,6 +228,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         sortBy,
         searchQuery,
         loading,
+        activeTab,
+        setActiveTab,
         setFilterCategory,
         setFilterHustleId,
         setSort,
