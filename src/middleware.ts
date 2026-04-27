@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // 준비 중 모드 — 런칭 시 false로 변경
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 // 접근 허용 경로 (관리자·준비중 페이지 자체는 항상 접근 가능)
 const ALLOWED_PATHS = ["/coming-soon", "/admin", "/api/"];
