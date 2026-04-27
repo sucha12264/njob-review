@@ -28,7 +28,10 @@ create table public.reviews (
   likes integer not null default 0,
 
   -- 수익 인증 이미지 (Supabase Storage URL)
-  proof_image_url text
+  proof_image_url text,
+
+  -- 카카오 로그인 사용자 ID (본인 삭제 인증용)
+  kakao_user_id text
 );
 
 -- 인덱스
@@ -47,6 +50,9 @@ create policy "Anyone can insert reviews" on public.reviews
 
 create policy "Anyone can update likes" on public.reviews
   for update using (true) with check (true);
+
+create policy "Anyone can delete reviews" on public.reviews
+  for delete using (true);
 
 
 -- ─────────────────────────────────────────
@@ -98,6 +104,61 @@ create policy "Anyone can insert click events" on public.click_events
 
 create policy "Anyone can read click events" on public.click_events
   for select using (true);
+
+
+-- ─────────────────────────────────────────
+-- 사용자 좋아요 동기화 (카카오 로그인 유저 크로스 디바이스)
+-- ─────────────────────────────────────────
+
+create table public.user_likes (
+  user_id text not null,
+  review_id uuid not null references public.reviews(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (user_id, review_id)
+);
+
+create index idx_user_likes_user_id on public.user_likes(user_id);
+
+alter table public.user_likes enable row level security;
+
+create policy "Anyone can read user_likes" on public.user_likes
+  for select using (true);
+
+create policy "Anyone can insert user_likes" on public.user_likes
+  for insert with check (true);
+
+create policy "Anyone can delete user_likes" on public.user_likes
+  for delete using (true);
+
+
+-- ─────────────────────────────────────────
+-- 신고 테이블
+-- ─────────────────────────────────────────
+
+create table public.reports (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamptz default now(),
+  type text not null check (type in ('review', 'comment')),
+  target_id uuid not null,
+  reason text not null,
+  reporter_ip text,
+  status text not null default 'pending' check (status in ('pending', 'resolved', 'dismissed'))
+);
+
+create index idx_reports_target_id on public.reports(target_id);
+create index idx_reports_created_at on public.reports(created_at desc);
+create index idx_reports_status on public.reports(status);
+
+alter table public.reports enable row level security;
+
+create policy "Anyone can insert reports" on public.reports
+  for insert with check (true);
+
+create policy "Anyone can read reports" on public.reports
+  for select using (true);
+
+create policy "Anyone can update report status" on public.reports
+  for update using (true) with check (true);
 
 
 -- ─────────────────────────────────────────

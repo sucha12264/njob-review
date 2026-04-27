@@ -4,6 +4,8 @@ import { HUSTLE_MAP } from "@/lib/hustleData";
 import { HUSTLE_GUIDES } from "@/lib/hustleGuides";
 import HustlePageClient from "./HustlePageClient";
 
+const BASE_URL = "https://njob-review.vercel.app";
+
 interface Props {
   params: Promise<{ id: string }>;
 }
@@ -15,19 +17,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = `${hustle.name} 후기 & 수익 정보 | N잡 후기판`;
   const description = `${hustle.name} 실제 경험자 후기 모음. 예상 수익 ${hustle.incomeRange}, 난이도·초기비용·첫 수익까지 기간을 한눈에 확인하세요.`;
+  const url = `${BASE_URL}/hustle/${id}`;
 
   return {
     title,
     description,
+    alternates: { canonical: url },
     openGraph: {
       title,
       description,
       type: "article",
+      url,
+      siteName: "N잡 후기판",
+      locale: "ko_KR",
+      images: [
+        {
+          url: `${BASE_URL}/hustle/${id}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: `${hustle.name} 부업 정보 & 후기`,
+        },
+      ],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
+      images: [`${BASE_URL}/hustle/${id}/opengraph-image`],
     },
   };
 }

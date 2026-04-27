@@ -16,6 +16,16 @@ interface Comment {
   kakao_user_id: string | null;
 }
 
+interface Report {
+  id: string;
+  created_at: string;
+  type: "review" | "comment";
+  target_id: string;
+  reason: string;
+  reporter_ip: string | null;
+  status: "pending" | "resolved" | "dismissed";
+}
+
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86400000);
@@ -37,7 +47,10 @@ export default function AdminPage() {
   const [filterHustle, setFilterHustle] = useState("all");
   const [stats, setStats] = useState({ total: 0, today: 0, withProof: 0, totalComments: 0 });
   const [clickStats, setClickStats] = useState<{ hustle_name: string; count: number }[]>([]);
-  const [activeTab, setActiveTab] = useState<"reviews" | "comments" | "clicks">("reviews");
+  const [reports, setReports] = useState<Report[]>([]);
+  const [reportSearch, setReportSearch] = useState("");
+  const [resolvingReportId, setResolvingReportId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"reviews" | "comments" | "clicks" | "reports">("reviews");
 
   useEffect(() => {
     if (authed) loadData();
@@ -91,7 +104,20 @@ export default function AdminPage() {
       );
     }
 
+    const { data: reportData } = await supabase
+      .from("reports")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (reportData) setReports(reportData as Report[]);
+
     setLoading(false);
+  }
+
+  async function updateReportStatus(id: string, status: "resolved" | "dismissed") {
+    setResolvingReportId(id);
+    await supabase.from("reports").update({ status }).eq("id", id);
+    setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    setResolvingReportId(null);
   }
 
   async function deleteReview(id: string) {
@@ -196,19 +222,165 @@ export default function AdminPage() {
         </div>
 
         {/* 탭 */}
-        <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
-          {(["reviews", "comments", "clicks"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === tab ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {tab === "reviews" ? "📝 후기 관리" : tab === "comments" ? "💬 댓글 관리" : "📊 클릭 통계"}
-            </button>
-          ))}
+        <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">
+          {(["reviews", "comments", "clicks", "reports"] as const).map((tab) => {
+            const pendingCount = tab === "reports" ? reports.filter((r) => r.status === "pending").length : 0;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                  activeTab === tab ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {tab === "reviews" && "📝 후기 관리"}
+                {tab === "comments" && "💬 댓글 관리"}
+                {tab === "clicks" && "📊 클릭 통계"}
+                {tab === "reports" && (
+                  <>
+                    🚨 신고 관리
+                    {pendingCount > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {pendingCount}
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
+
+        {/* 신고 관리 */}
+        {activeTab === "reports" && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 mb-5">
+              <input
+                type="text"
+                value={reportSearch}
+                onChange={(e) => setReportSearch(e.target.value)}
+                placeholder="신고 사유, 닉네임 검색..."
+                className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-indigo-400"
+              />
+              <button onClick={loadData} className="btn-primary px-5 py-2.5 text-sm">
+                새로고침
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="card p-12 text-center text-slate-400">불러오는 중...</div>
+            ) : (
+              <div className="card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">상태</th>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">유형</th>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">신고 사유</th>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">대상</th>
+                      <th className="text-left px-4 py-3 text-slate-500 font-semibold">날짜</th>
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {reports
+                      .filter((r) => {
+                        const q = reportSearch.toLowerCase();
+                        if (!q) return true;
+                        return r.reason.toLowerCase().includes(q) || r.type.includes(q);
+                      })
+                      .length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                          신고 내역이 없어요
+                        </td>
+                      </tr>
+                    ) : (
+                      reports
+                        .filter((r) => {
+                          const q = reportSearch.toLowerCase();
+                          if (!q) return true;
+                          return r.reason.toLowerCase().includes(q) || r.type.includes(q);
+                        })
+                        .map((rp) => {
+                          const rev = rp.type === "review" ? reviewMap[rp.target_id] : null;
+                          const cmt = rp.type === "comment" ? comments.find((c) => c.id === rp.target_id) : null;
+                          const statusBadge = {
+                            pending: { label: "대기", cls: "bg-yellow-100 text-yellow-700" },
+                            resolved: { label: "처리됨", cls: "bg-green-100 text-green-700" },
+                            dismissed: { label: "기각", cls: "bg-slate-100 text-slate-500" },
+                          }[rp.status];
+                          return (
+                            <tr key={rp.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusBadge.cls}`}>
+                                  {statusBadge.label}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${rp.type === "review" ? "bg-indigo-100 text-indigo-700" : "bg-violet-100 text-violet-700"}`}>
+                                  {rp.type === "review" ? "후기" : "댓글"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-700 max-w-xs">
+                                <span className="line-clamp-2">{rp.reason}</span>
+                              </td>
+                              <td className="px-4 py-3">
+                                {rev ? (
+                                  <a
+                                    href={`/review/${rev.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-indigo-600 hover:underline line-clamp-1 max-w-[160px] block"
+                                  >
+                                    {rev.title}
+                                  </a>
+                                ) : cmt ? (
+                                  <span className="text-xs text-slate-600 line-clamp-1 max-w-[160px] block">
+                                    {cmt.content}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-300">삭제된 콘텐츠</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                                {timeAgo(rp.created_at)}
+                              </td>
+                              <td className="px-4 py-3">
+                                {rp.status === "pending" && (
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => updateReportStatus(rp.id, "resolved")}
+                                      disabled={resolvingReportId === rp.id}
+                                      className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded transition-colors disabled:opacity-40"
+                                    >
+                                      처리
+                                    </button>
+                                    <button
+                                      onClick={() => updateReportStatus(rp.id, "dismissed")}
+                                      disabled={resolvingReportId === rp.id}
+                                      className="text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 px-2 py-1 rounded transition-colors disabled:opacity-40"
+                                    >
+                                      기각
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+                <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400 flex gap-4">
+                  <span>전체 {reports.length}건</span>
+                  <span className="text-yellow-600">대기 {reports.filter((r) => r.status === "pending").length}건</span>
+                  <span className="text-green-600">처리됨 {reports.filter((r) => r.status === "resolved").length}건</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
         {/* 클릭 통계 */}
         {activeTab === "clicks" && (

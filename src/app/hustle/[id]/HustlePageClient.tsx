@@ -1,12 +1,136 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ALL_HUSTLES, type SideHustle } from "@/lib/hustleData";
 import { type HustleGuide } from "@/lib/hustleGuides";
 import { useStore } from "@/lib/store";
 import ReviewCard from "@/components/ReviewCard";
 import ShareButtons from "@/components/ShareButtons";
 import { supabase } from "@/lib/supabase";
+import type { Review } from "@/lib/types";
+
+interface AISummary {
+  verdict: "긍정적" | "중립" | "부정적";
+  summary: string;
+  pros: string[];
+  cons: string[];
+  bestFor: string;
+}
+
+function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Review[] }) {
+  const [summary, setSummary] = useState<AISummary | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function fetchSummary() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ai-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hustleName,
+          reviews: reviews.map((r) => ({
+            income_range: r.income_range,
+            satisfaction: r.satisfaction,
+            recommend: r.recommend,
+            content: r.content,
+            pros: r.pros,
+            cons: r.cons,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "요청 실패");
+      setSummary(data as AISummary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "AI 요약 생성에 실패했어요");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const verdictStyle = {
+    긍정적: { bg: "bg-green-50 border-green-200", badge: "bg-green-100 text-green-700", icon: "✅" },
+    중립: { bg: "bg-amber-50 border-amber-200", badge: "bg-amber-100 text-amber-700", icon: "⚖️" },
+    부정적: { bg: "bg-red-50 border-red-200", badge: "bg-red-100 text-red-700", icon: "⚠️" },
+  };
+
+  if (summary) {
+    const style = verdictStyle[summary.verdict];
+    return (
+      <div className={`card p-5 border ${style.bg}`}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-slate-800 flex items-center gap-2">
+            🤖 AI 후기 분석
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${style.badge}`}>
+              {style.icon} {summary.verdict}
+            </span>
+          </h2>
+          <span className="text-[10px] text-slate-400">claude-sonnet-4-6</span>
+        </div>
+        <p className="text-sm text-slate-700 leading-relaxed mb-4">{summary.summary}</p>
+        <div className="grid sm:grid-cols-2 gap-3 mb-3">
+          <div>
+            <p className="text-xs font-semibold text-green-600 mb-1.5">👍 주요 장점</p>
+            <ul className="space-y-1">
+              {summary.pros.map((p, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600">
+                  <span className="text-green-500 mt-0.5">✓</span>{p}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-red-500 mb-1.5">👎 주의할 점</p>
+            <ul className="space-y-1">
+              {summary.cons.map((c, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600">
+                  <span className="text-red-400 mt-0.5">✗</span>{c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="text-xs bg-white/70 rounded-lg px-3 py-2 text-slate-600 border border-slate-100">
+          💡 <strong>추천 대상:</strong> {summary.bestFor}
+        </div>
+      </div>
+    );
+  }
+
+  if (reviews.length < 3) {
+    return null;
+  }
+
+  return (
+    <div className="card p-5 border border-dashed border-indigo-200 bg-indigo-50/30">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-slate-800 text-sm mb-0.5">🤖 AI 후기 분석</h3>
+          <p className="text-xs text-slate-500">후기 {reviews.length}개를 AI가 분석해 핵심을 요약해드려요</p>
+        </div>
+        <button
+          onClick={fetchSummary}
+          disabled={loading}
+          className="flex-shrink-0 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
+        >
+          {loading ? (
+            <>
+              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              분석 중...
+            </>
+          ) : (
+            "✨ 요약 보기"
+          )}
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+    </div>
+  );
+}
 
 async function trackClick(hustleId: string, hustleName: string) {
   try {
@@ -265,6 +389,9 @@ export default function HustlePageClient({ hustle, guide }: Props) {
                 </div>
               </div>
             )}
+
+            {/* AI 후기 요약 */}
+            <AISummaryBox hustleName={hustle.name} reviews={allReviews} />
 
             {/* 관련 후기 */}
             <div>

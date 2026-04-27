@@ -25,14 +25,13 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. 액세스 토큰 발급
-    const restKey = process.env.NEXT_PUBLIC_KAKAO_REST_KEY
-      ?? process.env.KAKAO_REST_KEY
-      ?? "ca6d3ed39713fc962d92d1c154f79092";
-    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI
-      ?? process.env.KAKAO_REDIRECT_URI
-      ?? "https://njob-review.vercel.app/api/auth/kakao";
-    const clientSecret = process.env.KAKAO_CLIENT_SECRET
-      ?? "kXdNeNFPHr2FHJnR191yKmUmYqB67EPu";
+    const restKey = process.env.NEXT_PUBLIC_KAKAO_REST_KEY ?? process.env.KAKAO_REST_KEY;
+    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI ?? process.env.KAKAO_REDIRECT_URI;
+    const clientSecret = process.env.KAKAO_CLIENT_SECRET;
+
+    if (!restKey || !redirectUri) {
+      throw new Error("카카오 환경변수가 설정되지 않았습니다");
+    }
 
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
@@ -40,7 +39,7 @@ export async function GET(req: NextRequest) {
       redirect_uri: redirectUri,
       code,
     };
-    tokenParams.client_secret = clientSecret;
+    if (clientSecret) tokenParams.client_secret = clientSecret;
 
     const tokenRes = await fetch("https://kauth.kakao.com/oauth/token", {
       method: "POST",

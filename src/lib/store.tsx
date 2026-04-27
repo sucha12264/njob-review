@@ -10,6 +10,7 @@ import {
 } from "react";
 import { supabase } from "./supabase";
 import { MOCK_REVIEWS } from "./mockData";
+import { getStoredUser } from "./kakaoAuth";
 import type { Review, ReviewInput, IncomeRange } from "./types";
 
 interface StoreState {
@@ -72,7 +73,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem("njob_likes");
       if (saved) setLikedIds(new Set(JSON.parse(saved) as string[]));
     } catch {}
+
+    loadKakaoLikes();
   }, []);
+
+  async function loadKakaoLikes() {
+    const kakaoUser = getStoredUser();
+    if (!kakaoUser) return;
+    try {
+      const { data: userLikes } = await supabase
+        .from("user_likes")
+        .select("review_id")
+        .eq("user_id", String(kakaoUser.id));
+      if (userLikes && userLikes.length > 0) {
+        const dbIds = (userLikes as { review_id: string }[]).map((l) => l.review_id);
+        setLikedIds((prev) => {
+          const merged = new Set([...prev, ...dbIds]);
+          localStorage.setItem("njob_likes", JSON.stringify([...merged]));
+          return merged;
+        });
+      }
+    } catch {}
+  }
 
   const setFilterCategory = useCallback((cat: string) => {
     setFilterCategoryState(cat);
@@ -112,6 +134,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             .eq("id", id);
         }
       } catch {}
+
+      // 카카오 로그인 유저: user_likes 테이블 동기화
+      const kakaoUser = getStoredUser();
+      if (kakaoUser) {
+        try {
+          if (isLiked) {
+            await supabase
+              .from("user_likes")
+              .delete()
+              .match({ user_id: String(kakaoUser.id), review_id: id });
+          } else {
+            await supabase
+              .from("user_likes")
+              .upsert({ user_id: String(kakaoUser.id), review_id: id });
+          }
+        } catch {}
+      }
     },
     [likedIds, reviews]
   );

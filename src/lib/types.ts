@@ -25,6 +25,7 @@ export interface Review {
   recommend: boolean;
   likes: number;
   proof_image_url?: string | null;
+  kakao_user_id?: string | null;
 }
 
 export interface ReviewInput {

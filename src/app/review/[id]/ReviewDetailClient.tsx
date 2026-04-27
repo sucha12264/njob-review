@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { INCOME_LABELS, INCOME_COLORS } from "@/lib/types";
 import type { Review } from "@/lib/types";
+import { getStoredUser } from "@/lib/kakaoAuth";
 import ShareButtons from "@/components/ShareButtons";
 import Comments from "@/components/Comments";
 
@@ -119,8 +121,35 @@ function ReportButton({ type, targetId }: { type: "review" | "comment"; targetId
 }
 
 export default function ReviewDetailClient({ review }: { review: Review }) {
+  const router = useRouter();
   const { toggleLike, likedIds } = useStore();
   const isLiked = likedIds.has(review.id);
+  const [isOwner, setIsOwner] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user && review.kakao_user_id && String(user.id) === review.kakao_user_id) {
+      setIsOwner(true);
+    }
+  }, [review.kakao_user_id]);
+
+  async function handleDelete() {
+    if (!confirm("내 후기를 삭제할까요? 되돌릴 수 없습니다.")) return;
+    setDeleting(true);
+    const user = getStoredUser();
+    const res = await fetch(`/api/review/${review.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kakao_user_id: String(user?.id) }),
+    });
+    if (res.ok) {
+      router.push(`/hustle/${review.hustle_id}`);
+    } else {
+      alert("삭제에 실패했어요. 다시 시도해주세요.");
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 animate-fade-in">
@@ -215,7 +244,7 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
             <span className="text-lg">{isLiked ? "❤️" : "🤍"}</span>
             <span>도움이 됐어요 {review.likes}</span>
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <ShareButtons
               title={`${review.hustle_name} 후기: ${review.title}`}
               description={review.content.slice(0, 80)}
@@ -226,7 +255,17 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
             >
               나도 후기 쓰기 →
             </Link>
-            <ReportButton type="review" targetId={review.id} />
+            {isOwner ? (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="text-[11px] text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors disabled:opacity-40"
+              >
+                {deleting ? "삭제 중..." : "🗑 내 후기 삭제"}
+              </button>
+            ) : (
+              <ReportButton type="review" targetId={review.id} />
+            )}
           </div>
         </div>
       </div>

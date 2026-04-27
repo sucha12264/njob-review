@@ -220,7 +220,7 @@ interface FeaturedPartner {
 const FEATURED_PARTNERS: FeaturedPartner[] = [
   {
     name: "N텔레콤 (앤텔레콤)",
-    logo: "/partners/ntelecom.png.png",
+    logo: "/partners/ntelecom.png",
     tagline: "한 번 구축하면 매달 자동으로 수익이 쌓이는 통신 파이프라인",
     description: "통신사 대리점 없이도 개인이 통신 상품을 판매하고 매달 지속적인 수수료 수익을 만들 수 있는 구조. 초기 셋업 후 고객이 쌓일수록 월 수익이 자동으로 늘어나는 진정한 파이프라인 부업.",
     badge: "파이프라인 부업",
