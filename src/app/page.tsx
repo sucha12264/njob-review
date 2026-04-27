@@ -21,7 +21,7 @@ function HeroSection() {
 
   return (
     <section className="bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-900 text-white">
-      <div className="mx-auto max-w-3xl px-4 py-14 sm:py-20 text-center">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12 text-center">
         <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-3 py-1 text-xs font-medium mb-5">
           <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
           N잡·온라인 부업 정보 커뮤니티
@@ -34,7 +34,7 @@ function HeroSection() {
             한 곳에서 확인하세요
           </span>
         </h1>
-        <p className="text-indigo-300 text-sm sm:text-base mb-10">
+        <p className="text-indigo-300 text-sm sm:text-base mb-7">
           과장 없이, 직접 경험한 N잡러들의 현실 수익 이야기
         </p>
 
@@ -185,7 +185,7 @@ function DirectoryTab() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
           {filtered.map((h) => <HustleCard key={h.id} hustle={h} />)}
         </div>
       )}
@@ -353,7 +353,7 @@ export default function Home() {
       </div>
 
       {/* 탭 콘텐츠 */}
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-5">
         {activeTab === "directory" && <DirectoryTab />}
         {activeTab === "reviews" && <ReviewTab />}
       </div>
