@@ -104,14 +104,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-100 safe-area-pb">
             <div className="flex items-center justify-around py-2">
               <Link
-                href="/"
+                href="/?tab=directory"
                 className="flex flex-col items-center gap-0.5 px-4 py-1 text-slate-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
               >
                 <span className="text-xl">🏠</span>
                 <span className="text-[10px] font-medium">홈</span>
               </Link>
               <Link
-                href="/#directory"
+                href="/?tab=directory"
                 className="flex flex-col items-center gap-0.5 px-4 py-1 text-slate-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
               >
                 <span className="text-xl">📋</span>
@@ -127,7 +127,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <span className="text-[10px] font-medium text-indigo-600 mt-0.5">후기 쓰기</span>
               </Link>
               <Link
-                href="/#reviews"
+                href="/?tab=reviews"
                 className="flex flex-col items-center gap-0.5 px-4 py-1 text-slate-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
               >
                 <span className="text-xl">💬</span>

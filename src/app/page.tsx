@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ReviewCard from "@/components/ReviewCard";
 import { useStore } from "@/lib/store";
@@ -308,7 +309,20 @@ type Tab = "directory" | "reviews";
 
 export default function Home() {
   const { reviews } = useStore();
-  const [activeTab, setActiveTab] = useState<Tab>("directory");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabParam = searchParams.get("tab") as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(tabParam === "reviews" ? "reviews" : "directory");
+
+  useEffect(() => {
+    const t = searchParams.get("tab") as Tab | null;
+    if (t === "reviews" || t === "directory") setActiveTab(t);
+  }, [searchParams]);
+
+  function handleTabChange(tab: Tab) {
+    setActiveTab(tab);
+    router.replace(`/?tab=${tab}`, { scroll: false });
+  }
 
   return (
     <div>
@@ -324,7 +338,7 @@ export default function Home() {
             ]).map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center gap-1.5 px-5 py-4 text-sm font-bold border-b-2 transition-all ${
                   activeTab === tab.id
                     ? "border-indigo-600 text-indigo-600"
