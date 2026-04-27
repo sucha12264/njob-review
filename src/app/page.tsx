@@ -204,6 +204,25 @@ const SORT_OPTIONS = [
 function ReviewTab() {
   const { filteredReviews, loading, sortBy, setSort, searchQuery, setSearch } = useStore();
 
+  // hustle_id 기준으로 그룹핑, 그룹 내 순서는 정렬 기준 유지
+  const grouped = filteredReviews.reduce<
+    { hustleId: string; hustleName: string; emoji: string; reviews: typeof filteredReviews }[]
+  >((acc, review) => {
+    const existing = acc.find((g) => g.hustleId === review.hustle_id);
+    const hustle = ALL_HUSTLES.find((h) => h.id === review.hustle_id);
+    if (existing) {
+      existing.reviews.push(review);
+    } else {
+      acc.push({
+        hustleId: review.hustle_id,
+        hustleName: review.hustle_name,
+        emoji: hustle?.emoji ?? "💼",
+        reviews: [review],
+      });
+    }
+    return acc;
+  }, []);
+
   return (
     <div>
       {/* 검색 + 정렬 */}
@@ -244,12 +263,19 @@ function ReviewTab() {
       </div>
 
       {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="card p-5 animate-pulse">
-              <div className="h-5 w-3/4 bg-slate-100 rounded mb-3" />
-              <div className="h-4 w-full bg-slate-100 rounded mb-2" />
-              <div className="h-4 w-2/3 bg-slate-100 rounded" />
+        <div className="space-y-6">
+          {[1, 2].map((i) => (
+            <div key={i}>
+              <div className="h-6 w-40 bg-slate-100 rounded-lg mb-3 animate-pulse" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[1, 2].map((j) => (
+                  <div key={j} className="card p-5 animate-pulse">
+                    <div className="h-5 w-3/4 bg-slate-100 rounded mb-3" />
+                    <div className="h-4 w-full bg-slate-100 rounded mb-2" />
+                    <div className="h-4 w-2/3 bg-slate-100 rounded" />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -263,10 +289,37 @@ function ReviewTab() {
           <Link href="/write" className="btn-primary inline-block">후기 쓰기 →</Link>
         </div>
       ) : (
-        /* 1열(모바일) → 2열(PC) */
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filteredReviews.map((review) => (
-            <ReviewCard key={review.id} review={review} />
+        <div className="space-y-8">
+          {grouped.map((group) => (
+            <div key={group.hustleId}>
+              {/* 부업 섹션 헤더 */}
+              <div className="flex items-center justify-between mb-3">
+                <Link
+                  href={`/hustle/${group.hustleId}`}
+                  className="flex items-center gap-2 group"
+                >
+                  <span className="text-xl">{group.emoji}</span>
+                  <span className="font-black text-slate-800 text-base group-hover:text-indigo-600 transition-colors">
+                    {group.hustleName}
+                  </span>
+                  <span className="text-xs font-semibold bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full">
+                    {group.reviews.length}개
+                  </span>
+                </Link>
+                <Link
+                  href={`/hustle/${group.hustleId}`}
+                  className="text-xs text-slate-400 hover:text-indigo-500 transition-colors"
+                >
+                  부업 정보 →
+                </Link>
+              </div>
+              {/* 해당 부업의 후기 카드들 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {group.reviews.map((review) => (
+                  <ReviewCard key={review.id} review={review} hideHustleTag />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

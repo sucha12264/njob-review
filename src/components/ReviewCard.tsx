@@ -27,7 +27,7 @@ function timeAgo(dateStr: string) {
 const DIFFICULTY_LABELS = ["", "매우 쉬움", "쉬움", "보통", "어려움", "매우 어려움"];
 const DIFFICULTY_COLORS = ["", "text-green-500", "text-green-400", "text-amber-500", "text-orange-500", "text-red-500"];
 
-export default function ReviewCard({ review }: { review: Review }) {
+export default function ReviewCard({ review, hideHustleTag }: { review: Review; hideHustleTag?: boolean }) {
   const { toggleLike, likedIds } = useStore();
   const isLiked = likedIds.has(review.id);
 
@@ -36,13 +36,15 @@ export default function ReviewCard({ review }: { review: Review }) {
       {/* 상단 */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Link
-            href={`/hustle/${review.hustle_id}`}
-            className="tag bg-indigo-50 text-indigo-700 font-semibold hover:bg-indigo-100 transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {review.hustle_name}
-          </Link>
+          {!hideHustleTag && (
+            <Link
+              href={`/hustle/${review.hustle_id}`}
+              className="tag bg-indigo-50 text-indigo-700 font-semibold hover:bg-indigo-100 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {review.hustle_name}
+            </Link>
+          )}
           <span className={`tag ${INCOME_COLORS[review.income_range]} font-semibold`}>
             💰 {INCOME_LABELS[review.income_range]}
           </span>
