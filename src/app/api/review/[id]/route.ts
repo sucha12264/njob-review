@@ -8,9 +8,9 @@ const supabaseAdmin = createClient(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const { kakao_user_id } = body as { kakao_user_id?: string };
 
