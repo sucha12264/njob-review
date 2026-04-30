@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ALL_HUSTLES, type SideHustle } from "@/lib/hustleData";
 import { type HustleGuide } from "@/lib/hustleGuides";
 import { useStore } from "@/lib/store";
 import ReviewCard from "@/components/ReviewCard";
 import ShareButtons from "@/components/ShareButtons";
-import { supabase } from "@/lib/supabase";
 import type { Review } from "@/lib/types";
 
 interface AISummary {
@@ -18,19 +17,56 @@ interface AISummary {
   bestFor: string;
 }
 
-function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Review[] }) {
+function AISummaryBox({
+  hustleId,
+  hustleName,
+  reviews,
+}: {
+  hustleId: string;
+  hustleName: string;
+  reviews: Review[];
+}) {
   const [summary, setSummary] = useState<AISummary | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // 처음엔 캐시 로딩 중
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [fromCache, setFromCache] = useState(false);
 
-  async function fetchSummary() {
-    setLoading(true);
+  // 마운트 시 캐시된 요약 자동 로드
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCached() {
+      try {
+        const res = await fetch(`/api/ai-summary?hustle_id=${encodeURIComponent(hustleId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data) {
+          setSummary({
+            verdict: data.verdict,
+            summary: data.summary,
+            pros: data.pros,
+            cons: data.cons,
+            bestFor: data.bestFor,
+          });
+          setFromCache(true);
+        }
+      } catch { /* 무시 */ } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadCached();
+    return () => { cancelled = true; };
+  }, [hustleId]);
+
+  async function generateSummary() {
+    setGenerating(true);
     setError("");
     try {
       const res = await fetch("/api/ai-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          hustleId,
           hustleName,
           reviews: reviews.map((r) => ({
             income_range: r.income_range,
@@ -45,10 +81,11 @@ function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Re
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "요청 실패");
       setSummary(data as AISummary);
+      setFromCache(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "AI 요약 생성에 실패했어요");
     } finally {
-      setLoading(false);
+      setGenerating(false);
     }
   }
 
@@ -57,6 +94,17 @@ function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Re
     중립: { bg: "bg-amber-50 border-amber-200", badge: "bg-amber-100 text-amber-700", icon: "⚖️" },
     부정적: { bg: "bg-red-50 border-red-200", badge: "bg-red-100 text-red-700", icon: "⚠️" },
   };
+
+  // 캐시 로딩 중 스켈레톤
+  if (loading) {
+    return (
+      <div className="card p-5 border border-slate-100 animate-pulse">
+        <div className="h-4 bg-slate-100 rounded w-1/3 mb-3" />
+        <div className="h-3 bg-slate-100 rounded w-full mb-2" />
+        <div className="h-3 bg-slate-100 rounded w-4/5" />
+      </div>
+    );
+  }
 
   if (summary) {
     const style = verdictStyle[summary.verdict];
@@ -69,7 +117,9 @@ function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Re
               {style.icon} {summary.verdict}
             </span>
           </h2>
-          <span className="text-[10px] text-slate-400">claude-sonnet-4-6</span>
+          <span className="text-[10px] text-slate-400">
+            {fromCache ? "캐시됨" : "claude-sonnet-4-6"}
+          </span>
         </div>
         <p className="text-sm text-slate-700 leading-relaxed mb-4">{summary.summary}</p>
         <div className="grid sm:grid-cols-2 gap-3 mb-3">
@@ -97,10 +147,20 @@ function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Re
         <div className="text-xs bg-white/70 rounded-lg px-3 py-2 text-slate-600 border border-slate-100">
           💡 <strong>추천 대상:</strong> {summary.bestFor}
         </div>
+        {fromCache && reviews.length >= 3 && (
+          <button
+            onClick={generateSummary}
+            disabled={generating}
+            className="mt-3 text-[11px] text-slate-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+          >
+            {generating ? "재분석 중..." : "🔄 최신 후기로 다시 분석"}
+          </button>
+        )}
       </div>
     );
   }
 
+  // 캐시 없음: 후기 3개 미만이면 숨김
   if (reviews.length < 3) {
     return null;
   }
@@ -113,11 +173,11 @@ function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Re
           <p className="text-xs text-slate-500">후기 {reviews.length}개를 AI가 분석해 핵심을 요약해드려요</p>
         </div>
         <button
-          onClick={fetchSummary}
-          disabled={loading}
+          onClick={generateSummary}
+          disabled={generating}
           className="flex-shrink-0 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
         >
-          {loading ? (
+          {generating ? (
             <>
               <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
               분석 중...
@@ -134,7 +194,11 @@ function AISummaryBox({ hustleName, reviews }: { hustleName: string; reviews: Re
 
 async function trackClick(hustleId: string, hustleName: string) {
   try {
-    await supabase.from("click_events").insert({ hustle_id: hustleId, hustle_name: hustleName, event: "official_url_click" });
+    await fetch("/api/click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hustle_id: hustleId, hustle_name: hustleName }),
+    });
   } catch { /* 클릭 트래킹 실패는 무시 */ }
 }
 
@@ -391,7 +455,7 @@ export default function HustlePageClient({ hustle, guide }: Props) {
             )}
 
             {/* AI 후기 요약 */}
-            <AISummaryBox hustleName={hustle.name} reviews={allReviews} />
+            <AISummaryBox hustleId={id} hustleName={hustle.name} reviews={allReviews} />
 
             {/* 관련 후기 */}
             <div>

@@ -1,9 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { rateLimit } from "@/lib/rateLimit";
+import { supabaseAdmin } from "@/lib/supabase.server";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+/* ───────────── GET: 캐시된 요약 가져오기 ───────────── */
+export async function GET(req: NextRequest) {
+  const hustleId = req.nextUrl.searchParams.get("hustle_id");
+  if (!hustleId) {
+    return NextResponse.json({ error: "hustle_id 필요" }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("hustle_summaries")
+    .select("verdict, summary, pros, cons, best_for, review_count, updated_at")
+    .eq("hustle_id", hustleId)
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: "DB 조회 실패" }, { status: 500 });
+  }
+
+  if (!data) {
+    return NextResponse.json(null); // 캐시 없음
+  }
+
+  return NextResponse.json(
+    {
+      verdict: data.verdict,
+      summary: data.summary,
+      pros: data.pros,
+      cons: data.cons,
+      bestFor: data.best_for,
+      reviewCount: data.review_count,
+      updatedAt: data.updated_at,
+    },
+    {
+      headers: {
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      },
+    }
+  );
+}
+
+/* ───────────── POST: AI 요약 생성 + 캐시 저장 ───────────── */
 export async function POST(req: NextRequest) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -16,7 +57,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { hustleName, reviews } = await req.json() as {
+    const { hustleId, hustleName, reviews } = await req.json() as {
+      hustleId?: string;
       hustleName: string;
       reviews: Array<{
         income_range: string;
@@ -71,7 +113,31 @@ export async function POST(req: NextRequest) {
     if (content.type !== "text") throw new Error("Invalid response type");
 
     const jsonText = content.text.trim().replace(/^```json\n?/, "").replace(/\n?```$/, "");
-    const result = JSON.parse(jsonText);
+    const result = JSON.parse(jsonText) as {
+      verdict: string;
+      summary: string;
+      pros: string[];
+      cons: string[];
+      bestFor: string;
+    };
+
+    // DB에 캐시 저장 (hustleId가 있을 때만)
+    if (hustleId) {
+      await supabaseAdmin.from("hustle_summaries").upsert(
+        {
+          hustle_id: hustleId,
+          hustle_name: hustleName,
+          verdict: result.verdict,
+          summary: result.summary,
+          pros: result.pros,
+          cons: result.cons,
+          best_for: result.bestFor,
+          review_count: reviews.length,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "hustle_id" }
+      );
+    }
 
     return NextResponse.json(result);
   } catch (err) {
