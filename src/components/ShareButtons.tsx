@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { initKakao } from "@/lib/kakaoAuth";
 
 interface Props {
   title: string;
@@ -9,6 +10,10 @@ interface Props {
 
 export default function ShareButtons({ title, description }: Props) {
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    initKakao().catch(() => {});
+  }, []);
 
   const url = typeof window !== "undefined" ? window.location.href : "";
 
@@ -26,16 +31,20 @@ export default function ShareButtons({ title, description }: Props) {
     }
   };
 
-  const shareKakao = () => {
+  const shareKakao = async () => {
     if (typeof window === "undefined") return;
+    await initKakao().catch(() => {});
     const kakao = (window as { Kakao?: { isInitialized?: () => boolean; Share?: { sendDefault: (opts: unknown) => void } } }).Kakao;
-    if (!kakao?.isInitialized?.() || !kakao.Share) return;
+    if (!kakao?.isInitialized?.() || !kakao.Share) {
+      copyLink(); // 카카오 초기화 실패 시 링크 복사로 대체
+      return;
+    }
     kakao.Share.sendDefault({
       objectType: "feed",
       content: {
         title,
         description: description ?? "",
-        imageUrl: "https://njob-review.vercel.app/og-image.png",
+        imageUrl: "https://njob-review.vercel.app/opengraph-image",
         link: { mobileWebUrl: url, webUrl: url },
       },
       buttons: [{ title: "후기 보러가기", link: { mobileWebUrl: url, webUrl: url } }],

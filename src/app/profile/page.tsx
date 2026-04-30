@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 import { getStoredUser, type KakaoUser } from "@/lib/kakaoAuth";
 import type { Review } from "@/lib/types";
 import ReviewCard from "@/components/ReviewCard";
@@ -15,19 +14,21 @@ export default function ProfilePage() {
   useEffect(() => {
     const u = getStoredUser();
     setUser(u);
-    if (u?.nickname) loadMyReviews(u.nickname);
+    if (u) loadMyReviews(u);
     else setLoading(false);
   }, []);
 
-  async function loadMyReviews(nickname: string) {
+  async function loadMyReviews(u: KakaoUser) {
     setLoading(true);
-    const { data } = await supabase
-      .from("reviews")
-      .select("*")
-      .eq("nickname", nickname)
-      .order("created_at", { ascending: false });
-    if (data) setReviews(data as Review[]);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/profile/reviews?kakao_user_id=${String(u.id)}`);
+      if (res.ok) {
+        const data: Review[] = await res.json();
+        setReviews(data);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (!user) {

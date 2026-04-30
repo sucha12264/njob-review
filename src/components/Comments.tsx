@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
 import { getStoredUser } from "@/lib/kakaoAuth";
 
 interface Comment {
@@ -126,12 +125,11 @@ export default function Comments({ reviewId }: { reviewId: string }) {
   const loadComments = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("comments")
-        .select("*")
-        .eq("review_id", reviewId)
-        .order("created_at", { ascending: true });
-      if (!error && data) setComments(data as Comment[]);
+      const res = await fetch(`/api/comments?review_id=${reviewId}`);
+      if (res.ok) {
+        const data: Comment[] = await res.json();
+        setComments(data);
+      }
     } finally {
       setLoading(false);
     }
@@ -139,21 +137,7 @@ export default function Comments({ reviewId }: { reviewId: string }) {
 
   useEffect(() => {
     loadComments();
-
-    // 실시간 구독 — 새 댓글 즉시 반영
-    const channel = supabase
-      .channel(`comments:${reviewId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "comments", filter: `review_id=eq.${reviewId}` },
-        (payload) => {
-          setComments((prev) => [...prev, payload.new as Comment]);
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [reviewId, loadComments]);
+  }, [loadComments]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -165,13 +149,24 @@ export default function Comments({ reviewId }: { reviewId: string }) {
     setError("");
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("comments")
-        .insert({ review_id: reviewId, nickname: nickname.trim(), content: content.trim() });
-      if (error) throw error;
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          review_id: reviewId,
+          nickname: nickname.trim(),
+          content: content.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "등록 실패");
+      }
+      const newComment: Comment = await res.json();
+      setComments((prev) => [...prev, newComment]);
       setContent("");
-    } catch {
-      setError("댓글 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "댓글 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }

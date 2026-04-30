@@ -15,12 +15,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let reviewUrls: MetadataRoute.Sitemap = [];
   try {
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)!,
+      (process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!
     );
     const { data } = await supabase
       .from("reviews")
       .select("id, created_at")
+      .not("hustle_id", "like", "__hp__%")
       .order("created_at", { ascending: false });
 
     if (data) {

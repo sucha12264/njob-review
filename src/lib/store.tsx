@@ -8,7 +8,6 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { supabase } from "./supabase";
 import { MOCK_REVIEWS } from "./mockData";
 import { getStoredUser } from "./kakaoAuth";
 import type { Review, ReviewInput, IncomeRange } from "./types";
@@ -53,17 +52,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async function loadReviews() {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("reviews")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        if (data && data.length > 0) {
-          setReviews(data as Review[]);
-        } else {
-          setReviews(MOCK_REVIEWS);
-        }
+        const res = await fetch("/api/reviews");
+        if (!res.ok) throw new Error("fetch failed");
+        const data: Review[] = await res.json();
+        setReviews(data.length > 0 ? data : MOCK_REVIEWS);
       } catch {
         setReviews(MOCK_REVIEWS);
       } finally {
@@ -73,11 +65,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     loadReviews();
 
+    // localStorage에서 좋아요 목록 복원
     try {
       const saved = localStorage.getItem("njob_likes");
       if (saved) setLikedIds(new Set(JSON.parse(saved) as string[]));
     } catch {}
 
+    // 카카오 로그인 유저: 서버에서 좋아요 목록 동기화
     loadKakaoLikes();
   }, []);
 
@@ -85,12 +79,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const kakaoUser = getStoredUser();
     if (!kakaoUser) return;
     try {
-      const { data: userLikes } = await supabase
-        .from("user_likes")
-        .select("review_id")
-        .eq("user_id", String(kakaoUser.id));
-      if (userLikes && userLikes.length > 0) {
-        const dbIds = (userLikes as { review_id: string }[]).map((l) => l.review_id);
+      const res = await fetch(`/api/profile/likes?kakao_user_id=${String(kakaoUser.id)}`);
+      if (!res.ok) return;
+      const dbIds: string[] = await res.json();
+      if (dbIds.length > 0) {
         setLikedIds((prev) => {
           const merged = new Set([...prev, ...dbIds]);
           localStorage.setItem("njob_likes", JSON.stringify([...merged]));
@@ -116,72 +108,65 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const toggleLike = useCallback(
     async (id: string) => {
       const isLiked = likedIds.has(id);
+      const action = isLiked ? "unlike" : "like";
       const delta = isLiked ? -1 : 1;
 
+      // 낙관적 업데이트 (UI 즉시 반영)
       setLikedIds((prev) => {
         const next = new Set(prev);
         if (isLiked) { next.delete(id); } else { next.add(id); }
         localStorage.setItem("njob_likes", JSON.stringify([...next]));
         return next;
       });
-
       setReviews((prev) =>
         prev.map((r) => (r.id === id ? { ...r, likes: r.likes + delta } : r))
       );
 
+      // 서버 동기화
       try {
-        const current = reviews.find((r) => r.id === id);
-        if (current) {
-          await supabase
-            .from("reviews")
-            .update({ likes: current.likes + delta })
-            .eq("id", id);
-        }
+        const kakaoUser = getStoredUser();
+        await fetch(`/api/reviews/${id}/like`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action,
+            kakao_user_id: kakaoUser ? String(kakaoUser.id) : undefined,
+          }),
+        });
       } catch {}
-
-      // 카카오 로그인 유저: user_likes 테이블 동기화
-      const kakaoUser = getStoredUser();
-      if (kakaoUser) {
-        try {
-          if (isLiked) {
-            await supabase
-              .from("user_likes")
-              .delete()
-              .match({ user_id: String(kakaoUser.id), review_id: id });
-          } else {
-            await supabase
-              .from("user_likes")
-              .upsert({ user_id: String(kakaoUser.id), review_id: id });
-          }
-        } catch {}
-      }
     },
-    [likedIds, reviews]
+    [likedIds]
   );
 
-  const addReview = useCallback(async (input: ReviewInput & { kakao_user_id?: string | null }): Promise<Review> => {
-    try {
-      const { data, error } = await supabase
-        .from("reviews")
-        .insert({ ...input, likes: 0 })
-        .select()
-        .single();
-
-      if (error) throw error;
-      const newReview = data as Review;
-      setReviews((prev) => [newReview, ...prev]);
-      return newReview;
-    } catch {
-      const newReview: Review = {
-        ...input,
-        id: `local_${Date.now()}`,
-        created_at: new Date().toISOString(),
-        likes: 0,
-      };
-      setReviews((prev) => [newReview, ...prev]);
-      return newReview;
-    }
-  }, []);
+  const addReview = useCallback(
+    async (input: ReviewInput & { kakao_user_id?: string | null }): Promise<Review> => {
+      try {
+        const res = await fetch("/api/reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error ?? "서버 오류");
+        }
+        const newReview: Review = await res.json();
+        setReviews((prev) => [newReview, ...prev]);
+        return newReview;
+      } catch (e) {
+        // 오프라인 등 실패 시 로컬 임시 등록
+        const newReview: Review = {
+          ...input,
+          id: `local_${Date.now()}`,
+          created_at: new Date().toISOString(),
+          likes: 0,
+        };
+        setReviews((prev) => [newReview, ...prev]);
+        throw e; // write 페이지에서 에러 처리할 수 있도록 rethrow
+      }
+    },
+    []
+  );
 
   const getReviewById = useCallback(
     (id: string) => reviews.find((r) => r.id === id),
@@ -193,7 +178,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [reviews]
   );
 
-  // import HUSTLE_MAP lazily to get category
   const q = searchQuery.trim().toLowerCase();
   const filteredReviews = reviews
     .filter((r) => {

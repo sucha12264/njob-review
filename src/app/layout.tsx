@@ -136,10 +136,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               </div>
               <div className="border-t border-slate-800 mt-10 pt-6 text-xs text-center space-y-1.5">
-                <p>© 2026 N잡 후기판. 본 사이트의 모든 후기는 개인 경험을 바탕으로 작성되었습니다.</p>
+                <p>© 2026 N잡 후기판. All rights reserved. 본 사이트의 모든 콘텐츠 및 데이터의 저작권은 운영자에게 귀속됩니다.</p>
                 <p className="text-slate-500">
                   ⚠️ 게시된 수익 정보는 작성자 개인의 경험이며, 동일한 수익을 보장하지 않습니다.
                   부업 활동으로 인한 결과에 대해 운영자는 책임을 지지 않습니다.
+                </p>
+                <p className="text-slate-600">
+                  🚫 본 서비스의 콘텐츠·데이터·디자인의 무단 크롤링, 복제, 상업적 이용을 금지합니다.
+                  위반 시 저작권법에 따라 법적 조치를 취할 수 있습니다. ·{" "}
+                  <Link href="/terms" className="underline hover:text-slate-400 transition-colors">이용약관</Link>
                 </p>
               </div>
             </div>
