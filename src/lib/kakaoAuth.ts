@@ -37,6 +37,15 @@ export async function initKakao() {
 
 // SDK 없이 직접 OAuth URL로 리다이렉트
 export function kakaoLogin() {
+  // 로그인 후 돌아올 페이지 저장 (홈 제외 — 홈은 그냥 홈으로 오면 됨)
+  if (typeof window !== "undefined") {
+    const returnUrl = window.location.pathname + window.location.search;
+    if (returnUrl !== "/" && !returnUrl.startsWith("/?login")) {
+      sessionStorage.setItem("kakao_return_url", returnUrl);
+    } else {
+      sessionStorage.removeItem("kakao_return_url");
+    }
+  }
   const clientId = process.env.NEXT_PUBLIC_KAKAO_REST_KEY;
   const redirectUri = encodeURIComponent(process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI!);
   window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`;

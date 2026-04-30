@@ -25,13 +25,18 @@ function KakaoAuthButtonInner() {
         const u = JSON.parse(userParam) as KakaoUser;
         saveUser(u);
         setUser(u);
-        // URL 파라미터 제거
-        window.history.replaceState({}, "", "/");
+        // 로그인 전 페이지로 복귀 (없으면 홈)
+        const returnUrl = sessionStorage.getItem("kakao_return_url") ?? "/";
+        sessionStorage.removeItem("kakao_return_url");
+        window.history.replaceState({}, "", returnUrl);
       } catch {}
     } else if (loginStatus === "fail") {
       const reason = searchParams.get("reason") ?? "알 수 없는 오류";
       alert(`카카오 로그인에 실패했어요.\n\n오류: ${reason}`);
-      window.history.replaceState({}, "", "/");
+      // 실패 시에도 원래 페이지로
+      const returnUrl = sessionStorage.getItem("kakao_return_url") ?? "/";
+      sessionStorage.removeItem("kakao_return_url");
+      window.history.replaceState({}, "", returnUrl);
     } else {
       setUser(getStoredUser());
     }
