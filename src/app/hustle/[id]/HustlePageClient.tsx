@@ -7,6 +7,7 @@ import { type HustleGuide } from "@/lib/hustleGuides";
 import { useStore } from "@/lib/store";
 import ReviewCard from "@/components/ReviewCard";
 import ShareButtons from "@/components/ShareButtons";
+import QuickWriteBox from "@/components/QuickWriteBox";
 import type { Review } from "@/lib/types";
 
 interface AISummary {
@@ -462,32 +463,39 @@ export default function HustlePageClient({ hustle, guide }: Props) {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-slate-800 text-lg">
                   {hustle.emoji} {hustle.name} 실제 후기
+                  {allReviews.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-slate-400">{allReviews.length}개</span>
+                  )}
                 </h2>
-                <Link
-                  href={`/write?hustle=${id}&name=${encodeURIComponent(hustle.name)}`}
-                  className="text-sm text-indigo-600 hover:text-indigo-700"
-                >
-                  후기 쓰기 →
-                </Link>
-              </div>
-
-              {hustleReviews.length > 0 ? (
-                <div className="space-y-3">
-                  {hustleReviews.map((r) => (
-                    <ReviewCard key={r.id} review={r} />
-                  ))}
-                </div>
-              ) : (
-                <div className="card p-10 text-center">
-                  <p className="text-3xl mb-3">📝</p>
-                  <p className="text-slate-500 mb-4">아직 후기가 없어요. 첫 번째로 남겨보세요!</p>
+                {allReviews.length > 0 && (
                   <Link
-                    href={`/write?hustle=${id}&name=${encodeURIComponent(hustle.name)}`}
-                    className="btn-primary inline-block"
+                    href={`/write?hustle=${id}`}
+                    className="text-sm text-indigo-600 hover:text-indigo-700"
                   >
                     후기 쓰기 →
                   </Link>
+                )}
+              </div>
+
+              {hustleReviews.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {hustleReviews.map((r) => (
+                    <ReviewCard key={r.id} review={r} />
+                  ))}
+                  {allReviews.length > 5 && (
+                    <Link
+                      href={`/write?hustle=${id}`}
+                      className="block text-center text-sm text-slate-400 hover:text-indigo-600 py-2 transition-colors"
+                    >
+                      전체 {allReviews.length}개 후기 보기 →
+                    </Link>
+                  )}
                 </div>
+              )}
+
+              {/* 인라인 후기 작성 (0개: 첫 후기 유도 / 1~4개: 추가 유도) */}
+              {allReviews.length < 5 && (
+                <QuickWriteBox hustle={hustle} existingCount={allReviews.length} />
               )}
             </div>
 

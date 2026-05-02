@@ -279,13 +279,24 @@ function ReviewTab() {
           ))}
         </div>
       ) : filteredReviews.length === 0 ? (
-        <div className="card p-16 text-center">
-          <p className="text-5xl mb-4">{searchQuery ? "🔍" : "📭"}</p>
-          <p className="font-bold text-slate-700 mb-2">
-            {searchQuery ? `"${searchQuery}"에 대한 후기가 없어요` : "아직 후기가 없어요"}
-          </p>
-          <p className="text-sm text-slate-400 mb-6">첫 번째 후기를 작성해보세요!</p>
-          <Link href="/write" className="btn-primary inline-block">후기 쓰기 →</Link>
+        <div className="card p-10 text-center">
+          {searchQuery ? (
+            <>
+              <p className="text-4xl mb-3">🔍</p>
+              <p className="font-bold text-slate-700 mb-1">&ldquo;{searchQuery}&rdquo; 후기가 없어요</p>
+              <p className="text-sm text-slate-400 mb-5">직접 경험이 있으시다면 첫 번째로 남겨보세요</p>
+              <Link href={`/write`} className="btn-primary inline-block text-sm">
+                {searchQuery} 후기 쓰기 →
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-4xl mb-3">📭</p>
+              <p className="font-bold text-slate-700 mb-1">아직 후기가 없어요</p>
+              <p className="text-sm text-slate-400 mb-5">부업을 경험해보셨다면 첫 번째 후기를 남겨보세요</p>
+              <Link href="/write" className="btn-primary inline-block text-sm">후기 남기기 →</Link>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-8">
