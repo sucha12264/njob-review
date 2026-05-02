@@ -59,3 +59,48 @@ export const INCOME_COLORS: Record<IncomeRange, string> = {
   "50_to_100": "bg-amber-100 text-amber-700",
   over_100: "bg-purple-100 text-purple-700",
 };
+
+// ─── 자유게시판 ────────────────────────────────────────
+export type BoardCategory = "자유수다" | "수익인증" | "질문해요" | "정보공유" | "N잡시작";
+
+export const BOARD_CATEGORIES: BoardCategory[] = [
+  "자유수다", "수익인증", "질문해요", "정보공유", "N잡시작",
+];
+
+export const BOARD_CATEGORY_COLORS: Record<BoardCategory, string> = {
+  "자유수다":  "bg-slate-100 text-slate-600",
+  "수익인증":  "bg-green-100 text-green-700",
+  "질문해요":  "bg-blue-100 text-blue-700",
+  "정보공유":  "bg-amber-100 text-amber-700",
+  "N잡시작":   "bg-purple-100 text-purple-700",
+};
+
+export const BOARD_CATEGORY_EMOJI: Record<BoardCategory, string> = {
+  "자유수다":  "💬",
+  "수익인증":  "💰",
+  "질문해요":  "❓",
+  "정보공유":  "📢",
+  "N잡시작":   "🚀",
+};
+
+export interface Post {
+  id: string;
+  created_at: string;
+  title: string;
+  content: string;
+  nickname: string;
+  kakao_user_id?: string | null;
+  category: BoardCategory;
+  likes: number;
+  views: number;
+  comment_count: number;
+}
+
+export interface PostComment {
+  id: string;
+  post_id: string;
+  created_at: string;
+  nickname: string;
+  kakao_user_id?: string | null;
+  content: string;
+}

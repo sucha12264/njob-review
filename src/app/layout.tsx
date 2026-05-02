@@ -117,6 +117,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <div className="flex items-center gap-2.5">
                 <Link
+                  href="/board"
+                  className="hidden sm:flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors px-2 py-1.5"
+                >
+                  📋 <span className="hidden md:inline">게시판</span>
+                </Link>
+                <Link
                   href="/profile"
                   className="hidden sm:flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors px-2 py-1.5"
                 >
@@ -159,6 +165,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <p className="font-semibold text-white mb-3">서비스</p>
                     <ul className="space-y-2">
                       <li><Link href="/" className="hover:text-white transition-colors">후기 목록</Link></li>
+                      <li><Link href="/board" className="hover:text-white transition-colors">자유게시판</Link></li>
                       <li><Link href="/write" className="hover:text-white transition-colors">후기 쓰기</Link></li>
                     </ul>
                   </div>

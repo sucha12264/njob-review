@@ -24,14 +24,13 @@ export default function BottomNav() {
         </Link>
 
         <Link
-          href="/"
-          onClick={() => setActiveTab("directory")}
+          href="/board"
           className={`flex flex-col items-center gap-0.5 px-4 py-1 transition-colors ${
-            isHome && activeTab === "directory" ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
+            pathname === "/board" || pathname.startsWith("/board/") ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
           }`}
         >
           <span className="text-xl">📋</span>
-          <span className="text-[10px] font-medium">부업목록</span>
+          <span className="text-[10px] font-medium">게시판</span>
         </Link>
 
         <Link href="/write" className="flex flex-col items-center gap-0.5 px-4 py-1">
