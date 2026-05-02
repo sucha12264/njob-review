@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { INCOME_LABELS, INCOME_COLORS } from "@/lib/types";
 import type { Review } from "@/lib/types";
-import { getStoredUser } from "@/lib/kakaoAuth";
+import { getStoredUser, initKakao } from "@/lib/kakaoAuth";
 import ShareButtons from "@/components/ShareButtons";
 import Comments from "@/components/Comments";
 
@@ -120,6 +120,143 @@ function ReportButton({ type, targetId }: { type: "review" | "comment"; targetId
   );
 }
 
+// ─── 신규 작성 후 공유 배너 ───────────────���───────────
+function NewReviewShareBannerInner({ review }: { review: Review }) {
+  const searchParams = useSearchParams();
+  const isNew = searchParams.get("new") === "1";
+  const [show, setShow] = useState(isNew);
+  const [copied, setCopied] = useState(false);
+  const [kakaoLoading, setKakaoLoading] = useState(false);
+
+  // URL에서 ?new=1 제거 (히스토리 오염 방지)
+  useEffect(() => {
+    if (isNew) {
+      const url = window.location.pathname;
+      window.history.replaceState({}, "", url);
+    }
+  }, [isNew]);
+
+  if (!show) return null;
+
+  const reviewUrl = typeof window !== "undefined" ? window.location.href.split("?")[0] : "";
+  const shareTitle = `${review.hustle_name} 후기: ${review.title}`;
+  const shareDesc = review.content.slice(0, 80).replace(/\n/g, " ");
+
+  async function handleKakao() {
+    setKakaoLoading(true);
+    try {
+      await initKakao();
+      const kakao = (window as { Kakao?: { isInitialized?: () => boolean; Share?: { sendDefault: (opts: unknown) => void } } }).Kakao;
+      if (!kakao?.isInitialized?.() || !kakao.Share) {
+        handleCopy();
+        return;
+      }
+      kakao.Share.sendDefault({
+        objectType: "feed",
+        content: {
+          title: shareTitle,
+          description: shareDesc,
+          imageUrl: "https://njob-review.vercel.app/opengraph-image",
+          link: { mobileWebUrl: reviewUrl, webUrl: reviewUrl },
+        },
+        buttons: [{ title: "후기 보러가기", link: { mobileWebUrl: reviewUrl, webUrl: reviewUrl } }],
+      });
+    } finally {
+      setKakaoLoading(false);
+    }
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(reviewUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  async function handleNative() {
+    if (navigator.share) {
+      await navigator.share({ title: shareTitle, text: shareDesc, url: reviewUrl });
+    } else {
+      handleCopy();
+    }
+  }
+
+  return (
+    <div className="mb-5 rounded-2xl overflow-hidden border border-indigo-200 bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg">
+      <div className="px-5 pt-5 pb-4">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <p className="text-lg font-black mb-0.5">🎉 후기가 등록됐어요!</p>
+            <p className="text-indigo-200 text-sm">
+              같은 고민 중인 분들에게 도움이 될 수 있어요
+            </p>
+          </div>
+          <button
+            onClick={() => setShow(false)}
+            className="text-indigo-300 hover:text-white transition-colors text-xl leading-none mt-0.5 ml-3"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 공유 버튼들 */}
+        <div className="flex flex-col sm:flex-row gap-2 mt-4">
+          {/* 카카오 — 메인 CTA */}
+          <button
+            onClick={handleKakao}
+            disabled={kakaoLoading}
+            className="flex-1 flex items-center justify-center gap-2 bg-[#FEE500] hover:bg-[#F0D900] text-[#191919] font-bold py-3 rounded-xl transition-colors disabled:opacity-70"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#3C1E1E">
+              <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.7 1.6 5.1 4 6.6l-.8 3.2 3.6-2.4c1 .2 2.1.3 3.2.3 5.523 0 10-3.477 10-7.8S17.523 3 12 3z" />
+            </svg>
+            {kakaoLoading ? "공유 중..." : "카카오톡으로 공유하기"}
+          </button>
+
+          {/* 링크 복사 */}
+          <button
+            onClick={handleCopy}
+            className={`flex items-center justify-center gap-2 font-semibold py-3 px-5 rounded-xl transition-all ${
+              copied
+                ? "bg-green-500 text-white"
+                : "bg-white/20 hover:bg-white/30 text-white"
+            }`}
+          >
+            {copied ? "✓ 복사됨" : "🔗 링크 복사"}
+          </button>
+
+          {/* 네이티브 공유 (모바일) */}
+          <button
+            onClick={handleNative}
+            className="flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-3 px-4 rounded-xl transition-colors sm:hidden"
+          >
+            ↗ 공유
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white/10 px-5 py-2.5 flex items-center justify-between">
+        <p className="text-xs text-indigo-200">
+          N잡 후기판 · 직접 경험한 {review.hustle_name} 후기
+        </p>
+        <button
+          onClick={() => setShow(false)}
+          className="text-xs text-indigo-300 hover:text-white transition-colors"
+        >
+          나중에
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NewReviewShareBanner({ review }: { review: Review }) {
+  return (
+    <Suspense fallback={null}>
+      <NewReviewShareBannerInner review={review} />
+    </Suspense>
+  );
+}
+
 export default function ReviewDetailClient({ review }: { review: Review }) {
   const router = useRouter();
   const { toggleLike, likedIds } = useStore();
@@ -159,6 +296,9 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
       >
         ← {review.hustle_name} 후기 목록
       </Link>
+
+      {/* 신규 작성 후 공유 유도 배너 (?new=1) */}
+      <NewReviewShareBanner review={review} />
 
       <div className="card p-5 sm:p-8">
         {/* 태그 */}

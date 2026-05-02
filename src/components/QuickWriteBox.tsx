@@ -20,6 +20,7 @@ export default function QuickWriteBox({ hustle, existingCount }: Props) {
 
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
+  const [doneReviewId, setDoneReviewId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,7 +44,7 @@ export default function QuickWriteBox({ hustle, existingCount }: Props) {
     setSubmitting(true);
     setError("");
     try {
-      await addReview({
+      const result = await addReview({
         nickname: nickname.trim(),
         hustle_id: hustle.id,
         hustle_name: hustle.name,
@@ -59,6 +60,7 @@ export default function QuickWriteBox({ hustle, existingCount }: Props) {
         proof_image_url: null,
         kakao_user_id: getStoredUser() ? String(getStoredUser()!.id) : null,
       } as ReviewInput & { kakao_user_id: string | null });
+      setDoneReviewId(result.id);
       setDone(true);
     } catch {
       setError("등록에 실패했어요. 다시 시도해주세요.");
@@ -70,19 +72,10 @@ export default function QuickWriteBox({ hustle, existingCount }: Props) {
   // ─── 작성 완료 ───────────────────────────────────────
   if (done) {
     return (
-      <div className="card p-6 border border-green-200 bg-green-50 text-center">
-        <div className="text-3xl mb-2">🎉</div>
-        <p className="font-bold text-green-800 mb-1">후기가 등록됐어요!</p>
-        <p className="text-sm text-green-600">
-          {hustle.name}에 대한 솔직한 경험을 나눠줘서 고마워요.
-        </p>
-        <Link
-          href={`/write?hustle=${hustle.id}`}
-          className="inline-block mt-4 text-xs text-green-700 underline underline-offset-2 hover:text-green-900"
-        >
-          더 자세한 후기 남기기 →
-        </Link>
-      </div>
+      <QuickDoneBox
+        hustle={hustle}
+        reviewId={doneReviewId}
+      />
     );
   }
 
@@ -210,6 +203,75 @@ export default function QuickWriteBox({ hustle, existingCount }: Props) {
           onCancel={() => setOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+// ─── 작성 완료 + 공유 박스 ────────────────────────────
+function QuickDoneBox({ hustle, reviewId }: { hustle: SideHustle; reviewId: string | null }) {
+  const [copied, setCopied] = useState(false);
+
+  const reviewUrl =
+    reviewId && !reviewId.startsWith("local_")
+      ? `https://njob-review.vercel.app/review/${reviewId}`
+      : typeof window !== "undefined"
+      ? window.location.href
+      : "";
+
+  async function handleCopy() {
+    if (!reviewUrl) return;
+    await navigator.clipboard.writeText(reviewUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  async function handleNative() {
+    if (navigator.share && reviewUrl) {
+      await navigator.share({
+        title: `${hustle.name} 후기`,
+        text: `${hustle.name} 직접 경험한 후기 — N잡 후기판에서 읽어보세요`,
+        url: reviewUrl,
+      });
+    } else {
+      handleCopy();
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-600 to-violet-600 text-white overflow-hidden">
+      <div className="px-5 py-5">
+        <div className="text-2xl mb-1.5">🎉</div>
+        <p className="font-black text-base mb-0.5">후기가 등록됐어요!</p>
+        <p className="text-indigo-200 text-sm mb-4">
+          같은 고민 중인 분들에게 공유해보세요
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={handleCopy}
+            className={`flex-1 flex items-center justify-center gap-2 font-semibold text-sm py-2.5 rounded-xl transition-all ${
+              copied ? "bg-green-500 text-white" : "bg-white/20 hover:bg-white/30 text-white"
+            }`}
+          >
+            {copied ? "✓ 복사됨" : "🔗 링크 복사"}
+          </button>
+          <button
+            onClick={handleNative}
+            className="flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors sm:hidden"
+          >
+            ↗ 공유
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white/10 px-5 py-2.5">
+        <Link
+          href={reviewId && !reviewId.startsWith("local_") ? `/review/${reviewId}` : `/write?hustle=${hustle.id}`}
+          className="text-xs text-indigo-200 hover:text-white transition-colors"
+        >
+          {reviewId && !reviewId.startsWith("local_") ? "후기 상세 보기 →" : "더 자세한 후기 남기기 →"}
+        </Link>
+      </div>
     </div>
   );
 }
