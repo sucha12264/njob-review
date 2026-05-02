@@ -4,21 +4,18 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { supabase } from "@/lib/supabase";
 import { getStoredUser } from "@/lib/kakaoAuth";
 import { ALL_HUSTLES, searchHustles, type SideHustle } from "@/lib/hustleData";
-import {
-  INCOME_LABELS,
-  type IncomeRange,
-  type Difficulty,
-  type Satisfaction,
-  type ReviewInput,
-} from "@/lib/types";
+import { INCOME_LABELS, type IncomeRange, type Satisfaction, type ReviewInput } from "@/lib/types";
 
 const INCOME_RANGES = Object.keys(INCOME_LABELS) as IncomeRange[];
 
-function StarPicker({ value, onChange, labels }: { value: number; onChange: (v: number) => void; labels: string[] }) {
+// ─── 별점 피커 ─────────────────────────────────────────
+const STAR_LABELS = ["별로예요", "그저 그래요", "보통이에요", "만족해요", "최고예요"];
+
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
+  const active = hover || value;
   return (
     <div className="flex items-center gap-3">
       <div className="flex gap-1">
@@ -29,37 +26,38 @@ function StarPicker({ value, onChange, labels }: { value: number; onChange: (v: 
             onClick={() => onChange(n)}
             onMouseEnter={() => setHover(n)}
             onMouseLeave={() => setHover(0)}
-            className={`text-2xl transition-transform hover:scale-110 ${n <= (hover || value) ? "text-amber-400" : "text-slate-200"}`}
+            className={`text-3xl transition-transform hover:scale-110 ${n <= active ? "text-amber-400" : "text-slate-200"}`}
           >
             ★
           </button>
         ))}
       </div>
-      {(hover || value) > 0 && (
-        <span className="text-sm text-slate-500">{labels[(hover || value) - 1]}</span>
+      {active > 0 && (
+        <span className="text-sm font-medium text-slate-600">{STAR_LABELS[active - 1]}</span>
       )}
     </div>
   );
 }
 
+// ─── 부업 검색 피커 ────────────────────────────────────
 function HustleSearchPicker({
   selected,
   onSelect,
 }: {
   selected: SideHustle | null;
-  onSelect: (h: SideHustle) => void;
+  onSelect: (h: SideHustle | null) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const results = searchHustles(query).slice(0, 10);
+  const results = searchHustles(query).slice(0, 8);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function onClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
   if (selected) {
@@ -72,7 +70,7 @@ function HustleSearchPicker({
         </div>
         <button
           type="button"
-          onClick={() => { setQuery(""); setOpen(false); onSelect(null as unknown as SideHustle); }}
+          onClick={() => { setQuery(""); onSelect(null); }}
           className="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded"
         >
           변경
@@ -90,12 +88,12 @@ function HustleSearchPicker({
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          placeholder="부업 이름 검색... (예: 쿠팡파트너스, E심팔이, 크몽)"
+          placeholder="부업 이름 검색... (예: 쿠팡파트너스, 크몽)"
           className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
         />
       </div>
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-56 overflow-y-auto">
           {results.length === 0 ? (
             <div className="p-4 text-center text-sm text-slate-400">검색 결과가 없어요</div>
           ) : (
@@ -116,7 +114,6 @@ function HustleSearchPicker({
           )}
         </div>
       )}
-      {/* 인기 부업 빠른 선택 */}
       {!query && (
         <div className="mt-3">
           <p className="text-xs text-slate-400 mb-2">🔥 인기 부업</p>
@@ -138,67 +135,73 @@ function HustleSearchPicker({
   );
 }
 
+// ─── 진행 단계 표시 ────────────────────────────────────
+function ProgressBar({ step, total }: { step: number; total: number }) {
+  return (
+    <div className="flex gap-1.5 mb-6">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1 flex-1 rounded-full transition-all ${
+            i < step ? "bg-indigo-600" : "bg-slate-200"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── 메인 폼 ───────────────────────────────────────────
 function WritePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addReview } = useStore();
   const [submitting, setSubmitting] = useState(false);
   const [selectedHustle, setSelectedHustle] = useState<SideHustle | null>(null);
-  const [form, setForm] = useState<Partial<ReviewInput>>({
-    recommend: true,
-    weekly_hours: 5,
-  });
+
+  // 핵심 필드
+  const [nickname, setNickname] = useState("");
+  const [incomeRange, setIncomeRange] = useState<IncomeRange | "">("");
+  const [satisfaction, setSatisfaction] = useState(0);
+  const [content, setContent] = useState("");
+
+  // 선택 필드
+  const [showExtra, setShowExtra] = useState(false);
+  const [title, setTitle] = useState("");
+  const [pros, setPros] = useState("");
+  const [cons, setCons] = useState("");
+  const [difficulty, setDifficulty] = useState(3);
+  const [weeklyHours, setWeeklyHours] = useState(5);
   const [proofImage, setProofImage] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
 
-  // URL 파라미터로 미리 선택된 부업 처리
+  // URL 파라미터로 미리 선택
   useEffect(() => {
     const hustleId = searchParams.get("hustle");
-    const hustleName = searchParams.get("name");
     if (hustleId) {
       const found = ALL_HUSTLES.find((h) => h.id === hustleId);
-      if (found) {
-        setSelectedHustle(found);
-        setForm((f) => ({ ...f, hustle_id: found.id, hustle_name: found.name }));
-      } else if (hustleName) {
-        // 직접 입력된 이름 처리
-        setForm((f) => ({ ...f, hustle_id: hustleId, hustle_name: hustleName }));
-      }
+      if (found) setSelectedHustle(found);
     }
   }, [searchParams]);
 
-  // 카카오 로그인 시 닉네임 자동 입력
+  // 카카오 로그인 닉네임 자동 입력
   useEffect(() => {
     const user = getStoredUser();
-    if (user?.nickname) {
-      setForm((f) => ({ ...f, nickname: user.nickname }));
-    }
+    if (user?.nickname) setNickname(user.nickname);
   }, []);
 
-  const set = (key: keyof ReviewInput, value: unknown) =>
-    setForm((f) => ({ ...f, [key]: value }));
+  const isValid = selectedHustle && nickname.trim() && incomeRange && satisfaction > 0 && content.trim().length >= 20;
 
-  const handleHustleSelect = (h: SideHustle | null) => {
-    setSelectedHustle(h);
-    if (h) {
-      set("hustle_id", h.id);
-      set("hustle_name", h.name);
-    } else {
-      setForm((f) => ({ ...f, hustle_id: undefined, hustle_name: undefined }));
-    }
-  };
-
-  const isValid =
-    form.nickname &&
-    form.hustle_id &&
-    form.income_range &&
-    form.difficulty &&
-    form.satisfaction &&
-    form.title &&
-    form.content &&
-    form.pros &&
-    form.cons;
+  // 완성도 계산 (선택 항목 채울수록 올라감)
+  const completeness = [
+    !!title,
+    !!pros,
+    !!cons,
+    difficulty !== 3,
+    weeklyHours !== 5,
+    !!proofImage,
+  ].filter(Boolean).length;
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -214,11 +217,10 @@ function WritePageInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isValid) return;
+    if (!isValid || !selectedHustle) return;
     setSubmitting(true);
 
     let proofImageUrl: string | null = null;
-
     if (proofImage) {
       try {
         const fd = new FormData();
@@ -226,63 +228,74 @@ function WritePageInner() {
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         const json = await res.json();
         if (json.url) proofImageUrl = json.url;
-      } catch {}
+      } catch { /* 업로드 실패 무시 */ }
     }
 
     const kakaoUser = getStoredUser();
     const review = await addReview({
-      ...(form as ReviewInput),
+      nickname: nickname.trim(),
+      hustle_id: selectedHustle.id,
+      hustle_name: selectedHustle.name,
+      income_range: incomeRange as IncomeRange,
+      weekly_hours: weeklyHours,
+      difficulty: difficulty as ReviewInput["difficulty"],
+      satisfaction: satisfaction as ReviewInput["satisfaction"],
+      title: title.trim() || `${selectedHustle.name} 후기`,
+      content: content.trim(),
+      pros: pros.trim(),
+      cons: cons.trim(),
+      recommend: satisfaction >= 4,
       proof_image_url: proofImageUrl,
       kakao_user_id: kakaoUser ? String(kakaoUser.id) : null,
     } as ReviewInput & { kakao_user_id: string | null });
+
     router.push(`/review/${review.id}`);
   }
 
+  // 현재 진행 단계 (필수 항목 기준)
+  const filledSteps = [!!selectedHustle, !!incomeRange, satisfaction > 0, content.trim().length >= 20].filter(Boolean).length;
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 animate-fade-in">
+    <div className="max-w-xl mx-auto px-4 py-6 sm:py-8 animate-fade-in">
       <Link href="/" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-600 mb-6 transition-colors">
         ← 목록으로
       </Link>
 
       <div className="card p-6 sm:p-8">
         <h1 className="text-2xl font-black text-slate-800 mb-1">✏️ 후기 작성</h1>
-        <p className="text-slate-400 text-sm mb-5">
-          솔직한 경험담이 다른 N잡러에게 큰 도움이 됩니다
-        </p>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6 text-xs text-amber-700 leading-relaxed">
-          ⚠️ 작성하신 수익 정보는 개인 경험 기반이며, 동일 수익을 보장하지 않습니다. 허위·과장 정보는 삭제될 수 있습니다.
-        </div>
+        <p className="text-slate-400 text-sm mb-5">솔직한 경험이 다른 N잡러에게 큰 도움이 됩니다</p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 닉네임 */}
+        {/* 진행 바 */}
+        <ProgressBar step={filledSteps} total={4} />
+
+        <form onSubmit={handleSubmit} className="space-y-7">
+
+          {/* ① 부업 선택 */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              어떤 부업인가요? <span className="text-red-400">*</span>
+            </label>
+            <HustleSearchPicker selected={selectedHustle} onSelect={setSelectedHustle} />
+          </div>
+
+          {/* ② 닉네임 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
               닉네임 <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
-              value={form.nickname || ""}
-              onChange={(e) => set("nickname", e.target.value)}
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
               placeholder="예: 직장인A, 퇴근후N잡러"
               maxLength={20}
               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
-          {/* 부업 선택 */}
+          {/* ③ 월 수익 */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              어떤 부업 후기인가요? <span className="text-red-400">*</span>
-            </label>
-            <HustleSearchPicker
-              selected={selectedHustle}
-              onSelect={handleHustleSelect}
-            />
-          </div>
-
-          {/* 월 수익 */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-slate-700 mb-2">
               월 평균 수익 <span className="text-red-400">*</span>
             </label>
             <div className="flex flex-wrap gap-2">
@@ -290,9 +303,9 @@ function WritePageInner() {
                 <button
                   key={range}
                   type="button"
-                  onClick={() => set("income_range", range)}
+                  onClick={() => setIncomeRange(range)}
                   className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
-                    form.income_range === range
+                    incomeRange === range
                       ? "border-indigo-500 bg-indigo-50 text-indigo-700"
                       : "border-slate-200 text-slate-600 hover:border-indigo-300"
                   }`}
@@ -303,208 +316,169 @@ function WritePageInner() {
             </div>
           </div>
 
-          {/* 주 투자 시간 */}
+          {/* ④ 만족도 */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              주 투자 시간:{" "}
-              <span className="text-indigo-600 font-bold">{form.weekly_hours}시간</span>
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={40}
-              value={form.weekly_hours || 5}
-              onChange={(e) => set("weekly_hours", Number(e.target.value))}
-              className="w-full accent-indigo-600"
-            />
-            <div className="flex justify-between text-xs text-slate-400 mt-1">
-              <span>1시간</span>
-              <span>40시간</span>
-            </div>
-          </div>
-
-          {/* 만족도 */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-slate-700 mb-2">
               만족도 <span className="text-red-400">*</span>
             </label>
-            <StarPicker
-              value={form.satisfaction || 0}
-              onChange={(v) => set("satisfaction", v as Satisfaction)}
-              labels={["별로예요", "그저 그래요", "보통이에요", "만족해요", "최고예요"]}
-            />
+            <StarPicker value={satisfaction} onChange={setSatisfaction} />
           </div>
 
-          {/* 난이도 */}
+          {/* ⑤ 후기 본문 */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              난이도 <span className="text-red-400">*</span>
-            </label>
-            <div className="flex gap-2">
-              {([
-                [1, "매우 쉬움"],
-                [2, "쉬움"],
-                [3, "보통"],
-                [4, "어려움"],
-                [5, "매우 어려움"],
-              ] as [number, string][]).map(([n, label]) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => set("difficulty", n as Difficulty)}
-                  className={`flex-1 py-2 rounded-xl border-2 text-xs font-medium transition-all ${
-                    form.difficulty === n
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 text-slate-500 hover:border-indigo-300"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 제목 */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              제목 <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.title || ""}
-              onChange={(e) => set("title", e.target.value)}
-              placeholder="예: 쿠팡파트너스 3개월 후기 - 블로그 없이도 가능할까?"
-              maxLength={60}
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-
-          {/* 본문 */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-slate-700 mb-2">
               솔직한 후기 <span className="text-red-400">*</span>
             </label>
             <textarea
-              value={form.content || ""}
-              onChange={(e) => set("content", e.target.value)}
-              placeholder="얼마나 했는지, 실제로 얼마 벌었는지, 어떤 점이 좋고 나빴는지 솔직하게 써주세요."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="실제로 얼마나 했는지, 수익은 어떻게 됐는지, 어떤 점이 좋고 나빴는지 자유롭게 써주세요. (최소 20자)"
               rows={5}
-              maxLength={1000}
+              maxLength={2000}
               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
             />
-            <p className="text-xs text-right text-slate-300 mt-1">
-              {(form.content || "").length}/1000
+            <p className={`text-xs text-right mt-1 ${content.length < 20 && content.length > 0 ? "text-red-400" : "text-slate-300"}`}>
+              {content.length}/2000{content.length < 20 && content.length > 0 ? ` (${20 - content.length}자 더 필요)` : ""}
             </p>
           </div>
 
-          {/* 장점 */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              👍 장점 <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              value={form.pros || ""}
-              onChange={(e) => set("pros", e.target.value)}
-              placeholder="이 부업의 좋은 점은?"
-              rows={2}
-              maxLength={300}
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
-            />
-          </div>
+          {/* ─── 선택 정보 ─── */}
+          <div className="border border-dashed border-slate-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowExtra((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span>➕ 더 자세히 작성하기</span>
+                {completeness > 0 && (
+                  <span className="bg-indigo-100 text-indigo-600 text-xs font-bold px-1.5 py-0.5 rounded-full">
+                    {completeness}/6
+                  </span>
+                )}
+              </span>
+              <span className="text-slate-400 text-lg leading-none">{showExtra ? "−" : "+"}</span>
+            </button>
 
-          {/* 단점 */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              👎 단점 <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              value={form.cons || ""}
-              onChange={(e) => set("cons", e.target.value)}
-              placeholder="이 부업의 아쉬운 점은?"
-              rows={2}
-              maxLength={300}
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
-            />
-          </div>
+            {showExtra && (
+              <div className="px-4 pb-5 pt-1 space-y-5 border-t border-slate-100">
+                <p className="text-xs text-slate-400">선택 사항이에요. 채울수록 후기의 신뢰도가 높아져요.</p>
 
-          {/* 추천 여부 */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              다른 사람에게 추천하시겠어요?
-            </label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => set("recommend", true)}
-                className={`flex-1 py-3 rounded-xl border-2 font-medium transition-all ${
-                  form.recommend
-                    ? "border-green-500 bg-green-50 text-green-700"
-                    : "border-slate-200 text-slate-500 hover:border-green-300"
-                }`}
-              >
-                👍 추천해요
-              </button>
-              <button
-                type="button"
-                onClick={() => set("recommend", false)}
-                className={`flex-1 py-3 rounded-xl border-2 font-medium transition-all ${
-                  form.recommend === false
-                    ? "border-red-400 bg-red-50 text-red-600"
-                    : "border-slate-200 text-slate-500 hover:border-red-300"
-                }`}
-              >
-                👎 비추해요
-              </button>
-            </div>
-          </div>
+                {/* 제목 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">제목</label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={selectedHustle ? `예: ${selectedHustle.name} 3개월 후기` : "후기 제목"}
+                    maxLength={60}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                  />
+                </div>
 
-          {/* 수익 인증 이미지 (선택) */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              📸 수익 인증 이미지 <span className="text-slate-400 font-normal">(선택)</span>
-            </label>
-            <p className="text-xs text-slate-400 mb-3">
-              수익 캡처, 정산 내역 등을 첨부하면 신뢰도가 높아져요. 개인 정보는 가려주세요.
-            </p>
+                {/* 장점 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">👍 장점</label>
+                  <textarea
+                    value={pros}
+                    onChange={(e) => setPros(e.target.value)}
+                    placeholder="이 부업의 좋은 점"
+                    rows={2}
+                    maxLength={300}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none resize-none"
+                  />
+                </div>
 
-            {proofPreview ? (
-              <div className="relative inline-block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={proofPreview}
-                  alt="수익 인증 미리보기"
-                  className="max-h-48 rounded-xl border border-slate-200 object-contain"
-                />
-                <button
-                  type="button"
-                  onClick={() => { setProofImage(null); setProofPreview(null); }}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
-                >
-                  ×
-                </button>
+                {/* 단점 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">👎 단점</label>
+                  <textarea
+                    value={cons}
+                    onChange={(e) => setCons(e.target.value)}
+                    placeholder="이 부업의 아쉬운 점"
+                    rows={2}
+                    maxLength={300}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none resize-none"
+                  />
+                </div>
+
+                {/* 난이도 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">난이도</label>
+                  <div className="flex gap-1.5">
+                    {(["매우 쉬움", "쉬움", "보통", "어려움", "매우 어려움"] as const).map((label, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setDifficulty(i + 1)}
+                        className={`flex-1 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
+                          difficulty === i + 1
+                            ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                            : "border-slate-200 text-slate-400 hover:border-indigo-300"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 주 투자 시간 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                    주 투자 시간: <span className="text-indigo-600 font-bold">{weeklyHours}시간</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={40}
+                    value={weeklyHours}
+                    onChange={(e) => setWeeklyHours(Number(e.target.value))}
+                    className="w-full accent-indigo-600"
+                  />
+                  <div className="flex justify-between text-xs text-slate-300 mt-0.5">
+                    <span>1시간</span>
+                    <span>40시간</span>
+                  </div>
+                </div>
+
+                {/* 수익 인증 이미지 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    📸 수익 인증 이미지
+                  </label>
+                  <p className="text-xs text-slate-400 mb-2">수익 캡처, 정산 내역 등을 첨부하면 신뢰도가 높아져요.</p>
+                  {proofPreview ? (
+                    <div className="relative inline-block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={proofPreview} alt="수익 인증" className="max-h-40 rounded-xl border border-slate-200 object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => { setProofImage(null); setProofPreview(null); }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors">
+                      <span className="text-xl mb-0.5">📷</span>
+                      <span className="text-xs text-slate-400">클릭해서 업로드</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                    </label>
+                  )}
+                  {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
+                </div>
               </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors">
-                <span className="text-2xl mb-1">📷</span>
-                <span className="text-sm text-slate-400">클릭해서 이미지 업로드</span>
-                <span className="text-xs text-slate-300 mt-0.5">JPG, PNG, WEBP · 최대 5MB</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-              </label>
-            )}
-            {uploadError && (
-              <p className="text-xs text-red-500 mt-1">{uploadError}</p>
             )}
           </div>
 
+          {/* 제출 */}
           <button
             type="submit"
             disabled={!isValid || submitting}
-            className="w-full btn-primary py-3 text-base flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full btn-primary py-3.5 text-base font-bold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <>
@@ -512,9 +486,18 @@ function WritePageInner() {
                 등록 중...
               </>
             ) : (
-              "후기 등록하기 ✨"
+              "후기 등록하기 →"
             )}
           </button>
+
+          {!isValid && (nickname || incomeRange || satisfaction || content) && (
+            <p className="text-xs text-center text-slate-400 -mt-3">
+              {!selectedHustle ? "부업을 선택해주세요" :
+               !incomeRange ? "월 수익을 선택해주세요" :
+               satisfaction === 0 ? "만족도를 선택해주세요" :
+               content.trim().length < 20 ? `후기를 ${20 - content.trim().length}자 더 써주세요` : ""}
+            </p>
+          )}
         </form>
       </div>
     </div>
@@ -523,7 +506,12 @@ function WritePageInner() {
 
 export default function WritePage() {
   return (
-    <Suspense fallback={<div className="max-w-2xl mx-auto px-4 py-10 animate-pulse"><div className="h-8 w-48 bg-slate-100 rounded mb-6" /><div className="h-96 bg-slate-50 rounded-2xl" /></div>}>
+    <Suspense fallback={
+      <div className="max-w-xl mx-auto px-4 py-10 animate-pulse">
+        <div className="h-8 w-48 bg-slate-100 rounded mb-6" />
+        <div className="h-96 bg-slate-50 rounded-2xl" />
+      </div>
+    }>
       <WritePageInner />
     </Suspense>
   );

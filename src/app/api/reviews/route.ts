@@ -47,9 +47,9 @@ export async function POST(req: NextRequest) {
       proof_image_url, kakao_user_id,
     } = body;
 
-    // 필수 항목 검증
+    // 필수 항목 검증 (닉네임·부업·수익·만족도·본문만 필수)
     if (!nickname || !hustle_id || !hustle_name || !income_range ||
-        !difficulty || !satisfaction || !title || !content || !pros || !cons) {
+        !satisfaction || !content) {
       return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
     }
 
@@ -57,6 +57,16 @@ export async function POST(req: NextRequest) {
     if (String(hustle_id).startsWith("__hp__")) {
       return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
     }
+
+    // 제목 자동생성 (미입력 시)
+    const autoTitle = title
+      ? String(title).slice(0, 100)
+      : `${String(hustle_name)} 후기`;
+
+    // 추천여부 자동결정 (미입력 시 만족도 기반)
+    const autoRecommend = recommend !== undefined
+      ? Boolean(recommend)
+      : Number(satisfaction) >= 4;
 
     const { data, error } = await supabaseAdmin
       .from("reviews")
@@ -66,13 +76,13 @@ export async function POST(req: NextRequest) {
         hustle_name: String(hustle_name).slice(0, 50),
         income_range,
         weekly_hours: Number(weekly_hours) || 0,
-        difficulty: Number(difficulty),
+        difficulty: Number(difficulty) || 3,
         satisfaction: Number(satisfaction),
-        title: String(title).slice(0, 100),
+        title: autoTitle,
         content: String(content).slice(0, 2000),
-        pros: String(pros).slice(0, 500),
-        cons: String(cons).slice(0, 500),
-        recommend: Boolean(recommend),
+        pros: pros ? String(pros).slice(0, 500) : "",
+        cons: cons ? String(cons).slice(0, 500) : "",
+        recommend: autoRecommend,
         proof_image_url: proof_image_url ?? null,
         kakao_user_id: kakao_user_id ?? null,
         likes: 0,
