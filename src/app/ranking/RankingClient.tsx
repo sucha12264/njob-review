@@ -31,7 +31,7 @@ function TrendingBanner({ className = "" }: { className?: string }) {
           </p>
         </div>
         <a
-          href="https://www.antelecommunications.com"
+          href="https://blog.naver.com/leted1968/224072273734"
           target="_blank"
           rel="noopener noreferrer"
           className="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
