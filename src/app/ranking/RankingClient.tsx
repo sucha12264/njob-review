@@ -13,6 +13,36 @@ const TABS: { key: SortKey; label: string; emoji: string; desc: string }[] = [
   { key: "top_income_rate", label: "고수익 비율 순", emoji: "💰", desc: "월 50만원 이상 비율 기준" },
 ];
 
+/* ─── 요즘 떠오르는 부업 배너 ──────────────────────────── */
+function TrendingBanner({ className = "" }: { className?: string }) {
+  return (
+    <div className={`rounded-2xl overflow-hidden border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 ${className}`}>
+      <div className="flex items-center gap-1.5 bg-orange-500 px-4 py-1.5">
+        <span className="text-xs font-black text-white tracking-wide">🔥 요즘 떠오르는 부업</span>
+      </div>
+      <div className="flex items-center gap-4 p-4">
+        <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-2xl flex-shrink-0">
+          📡
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-slate-800 text-sm mb-0.5">앤텔레콤 알뜰폰 대리점</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            초기 비용 없이 알뜰폰 요금제를 소개하고 수당 수익. 통신 지식 없어도 시작 가능한 부업
+          </p>
+        </div>
+        <a
+          href="https://www.antelecommunications.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
+        >
+          자세히 보기 →
+        </a>
+      </div>
+    </div>
+  );
+}
+
 const MEDAL = ["🥇", "🥈", "🥉"];
 const DIFFICULTY_LABEL = ["", "매우쉬움", "쉬움", "보통", "어려움", "매우어려움"];
 const DIFFICULTY_COLOR = ["", "text-green-500", "text-green-500", "text-amber-500", "text-orange-500", "text-red-500"];
@@ -220,6 +250,9 @@ export default function RankingClient({ initialData }: Props) {
               </div>
             )}
 
+            {/* 요즘 떠오르는 부업 배너 */}
+            <TrendingBanner />
+
             {/* 전체 순위 목록 */}
             <div className="card divide-y divide-slate-50">
               {/* 테이블 헤더 (데스크탑) */}
@@ -254,8 +287,11 @@ export default function RankingClient({ initialData }: Props) {
               ))}
             </div>
 
+            {/* 요즘 떠오르는 부업 배너 (하단) */}
+            <TrendingBanner className="mt-8" />
+
             {/* 하단 CTA */}
-            <div className="mt-8 card p-6 bg-gradient-to-br from-indigo-600 to-violet-600 text-white text-center">
+            <div className="mt-4 card p-6 bg-gradient-to-br from-indigo-600 to-violet-600 text-white text-center">
               <p className="font-bold text-lg mb-1">내 경험도 랭킹에 반영해요</p>
               <p className="text-indigo-200 text-sm mb-4">
                 실제로 해본 부업 후기를 남기면 이 랭킹에 실시간 반영됩니다
