@@ -25,9 +25,19 @@ function TrendingBanner({ className = "" }: { className?: string }) {
           📡
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-black text-slate-800 text-sm mb-0.5">앤텔레콤 알뜰폰 대리점</p>
+          {/* 제목 + 뱃지 */}
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <p className="font-black text-slate-800 text-sm">앤텔레콤 선불폰·알뜰폰 온라인 대리점</p>
+            <span className="inline-flex items-center gap-1 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+              ★ 파이프라인 부업
+            </span>
+            <span className="inline-flex items-center gap-1 bg-green-400 text-green-900 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+              💰 매달 자동수수료
+            </span>
+          </div>
+          {/* 설명 */}
           <p className="text-xs text-slate-500 leading-relaxed">
-            초기 비용 없이 알뜰폰 요금제를 소개하고 수당 수익. 통신 지식 없어도 시작 가능한 부업
+            초기비용 116만원 · 선불폰·알뜰폰 요금제 온라인 대리점 운영 · 전문 온라인 마케팅 무료 교육 제공
           </p>
         </div>
         <a
