@@ -41,14 +41,13 @@ export default function BottomNav() {
         </Link>
 
         <Link
-          href="/"
-          onClick={() => setActiveTab("reviews")}
+          href="/ranking"
           className={`flex flex-col items-center gap-0.5 px-4 py-1 transition-colors ${
-            isHome && activeTab === "reviews" ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
+            pathname === "/ranking" ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
           }`}
         >
-          <span className="text-xl">💬</span>
-          <span className="text-[10px] font-medium">후기피드</span>
+          <span className="text-xl">🏆</span>
+          <span className="text-[10px] font-medium">랭킹</span>
         </Link>
 
         <Link

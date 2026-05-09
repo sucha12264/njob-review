@@ -216,11 +216,8 @@ export default function PostDetailClient({ post }: { post: Post }) {
   async function handleDelete() {
     if (!confirm("이 글을 삭제할까요? 되돌릴 수 없습니다.")) return;
     setDeleting(true);
-    const user = getStoredUser();
     const res = await fetch(`/api/posts/${post.id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kakao_user_id: String(user?.id) }),
     });
     if (res.ok) {
       router.push("/board");

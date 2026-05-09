@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store";
 import ReviewCard from "@/components/ReviewCard";
 import ShareButtons from "@/components/ShareButtons";
 import QuickWriteBox from "@/components/QuickWriteBox";
+import HustleQnA from "@/components/HustleQnA";
 import type { Review } from "@/lib/types";
 
 interface AISummary {
@@ -498,6 +499,9 @@ export default function HustlePageClient({ hustle, guide }: Props) {
                 <QuickWriteBox hustle={hustle} existingCount={allReviews.length} />
               )}
             </div>
+
+            {/* Q&A */}
+            <HustleQnA hustleId={id} hustleName={hustle.name} />
 
             {/* 모바일 전용: 비슷한 부업 */}
             {relatedHustles.length > 0 && (

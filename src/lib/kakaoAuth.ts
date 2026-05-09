@@ -53,6 +53,8 @@ export function kakaoLogin() {
 
 export async function kakaoLogout(): Promise<void> {
   localStorage.removeItem("kakao_user");
+  // 서버측 httpOnly 쿠키도 삭제 (IDOR 방지용 세션 쿠키)
+  await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
 }
 
 export function getStoredUser(): KakaoUser | null {

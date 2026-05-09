@@ -9,6 +9,7 @@ import type { Review } from "@/lib/types";
 import { getStoredUser, initKakao } from "@/lib/kakaoAuth";
 import ShareButtons from "@/components/ShareButtons";
 import Comments from "@/components/Comments";
+import ReviewUpdateTimeline from "@/components/ReviewUpdateTimeline";
 
 function Stars({ value }: { value: number }) {
   return (
@@ -274,11 +275,8 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
   async function handleDelete() {
     if (!confirm("내 후기를 삭제할까요? 되돌릴 수 없습니다.")) return;
     setDeleting(true);
-    const user = getStoredUser();
     const res = await fetch(`/api/review/${review.id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kakao_user_id: String(user?.id) }),
     });
     if (res.ok) {
       router.push(`/hustle/${review.hustle_id}`);
@@ -372,7 +370,15 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
           </div>
         </div>
 
-        <div className="border-t border-slate-100 pt-4 flex flex-wrap items-center justify-between gap-3">
+        {/* 수익 업데이트 타임라인 */}
+        <ReviewUpdateTimeline
+          reviewId={review.id}
+          reviewKakaoUserId={review.kakao_user_id}
+          originalIncome={review.income_range}
+          originalNickname={review.nickname}
+        />
+
+        <div className="border-t border-slate-100 pt-4 mt-6 flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={() => toggleLike(review.id)}
             className={`flex items-center gap-2 text-sm px-4 py-2 rounded-full border transition-all active:scale-95 ${

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
+import { rateLimit } from "@/lib/rateLimit";
 
 const VALID_CATEGORIES = ["자유수다", "수익인증", "질문해요", "정보공유", "N잡시작"];
 const LIMIT = 20;
@@ -27,6 +28,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`posts-post:${ip}`, 5, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   const body = await req.json().catch(() => ({})) as Record<string, string>;
   const { title, content, nickname, category, kakao_user_id } = body;
 

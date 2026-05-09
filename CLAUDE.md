@@ -57,6 +57,8 @@ src/
 │   │   ├── comments/             # GET POST (후기 댓글)
 │   │   ├── posts/                # GET POST / [id]/ like/ view/
 │   │   ├── post-comments/        # GET POST / [id]/
+│   │   ├── hustle-questions/     # GET POST / [id]/ [id]/answers/
+│   │   ├── hustle-answers/       # [id]/ DELETE (작성자 본인)
 │   │   ├── ai-summary/           # GET(캐시) POST(생성+저장)
 │   │   ├── click/                # POST (클릭 이벤트)
 │   │   ├── report/               # POST (신고)
@@ -254,6 +256,8 @@ git commit -m "feat: free board (posts + comments)"
 - `comments` — 후기 댓글
 - `posts` — 자유게시판 글
 - `post_comments` — 게시판 댓글 (트리거로 posts.comment_count 자동 업데이트)
+- `hustle_questions` — 부업별 Q&A 질문 (hustle_id 인덱스)
+- `hustle_answers` — Q&A 답변 (트리거로 hustle_questions.answer_count 자동 업데이트)
 - `hustle_summaries` — AI 요약 캐시 (hustle_id PK)
 - `reports` — 신고
 - `click_events` — 클릭 통계

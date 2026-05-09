@@ -157,6 +157,7 @@ function WritePageInner() {
   const searchParams = useSearchParams();
   const { addReview } = useStore();
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [selectedHustle, setSelectedHustle] = useState<SideHustle | null>(null);
 
   // 핵심 필드
@@ -219,37 +220,44 @@ function WritePageInner() {
     e.preventDefault();
     if (!isValid || !selectedHustle) return;
     setSubmitting(true);
+    setSubmitError("");
 
-    let proofImageUrl: string | null = null;
-    if (proofImage) {
-      try {
-        const fd = new FormData();
-        fd.append("file", proofImage);
-        const res = await fetch("/api/upload", { method: "POST", body: fd });
-        const json = await res.json();
-        if (json.url) proofImageUrl = json.url;
-      } catch { /* 업로드 실패 무시 */ }
+    try {
+      const kakaoUser = getStoredUser();
+
+      let proofImageUrl: string | null = null;
+      if (proofImage) {
+        try {
+          const fd = new FormData();
+          fd.append("file", proofImage);
+          if (kakaoUser) fd.append("kakao_user_id", String(kakaoUser.id));
+          const res = await fetch("/api/upload", { method: "POST", body: fd });
+          const json = await res.json();
+          if (json.url) proofImageUrl = json.url;
+        } catch { /* 업로드 실패 무시 — 후기는 계속 제출 */ }
+      }
+      const review = await addReview({
+        nickname: nickname.trim(),
+        hustle_id: selectedHustle.id,
+        hustle_name: selectedHustle.name,
+        income_range: incomeRange as IncomeRange,
+        weekly_hours: weeklyHours,
+        difficulty: difficulty as ReviewInput["difficulty"],
+        satisfaction: satisfaction as ReviewInput["satisfaction"],
+        title: title.trim() || `${selectedHustle.name} 후기`,
+        content: content.trim(),
+        pros: pros.trim(),
+        cons: cons.trim(),
+        recommend: satisfaction >= 4,
+        proof_image_url: proofImageUrl,
+        kakao_user_id: kakaoUser ? String(kakaoUser.id) : null,
+      } as ReviewInput & { kakao_user_id: string | null });
+
+      router.push(`/review/${review.id}?new=1`);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "후기 등록에 실패했어요. 다시 시도해주세요.");
+      setSubmitting(false);
     }
-
-    const kakaoUser = getStoredUser();
-    const review = await addReview({
-      nickname: nickname.trim(),
-      hustle_id: selectedHustle.id,
-      hustle_name: selectedHustle.name,
-      income_range: incomeRange as IncomeRange,
-      weekly_hours: weeklyHours,
-      difficulty: difficulty as ReviewInput["difficulty"],
-      satisfaction: satisfaction as ReviewInput["satisfaction"],
-      title: title.trim() || `${selectedHustle.name} 후기`,
-      content: content.trim(),
-      pros: pros.trim(),
-      cons: cons.trim(),
-      recommend: satisfaction >= 4,
-      proof_image_url: proofImageUrl,
-      kakao_user_id: kakaoUser ? String(kakaoUser.id) : null,
-    } as ReviewInput & { kakao_user_id: string | null });
-
-    router.push(`/review/${review.id}`);
   }
 
   // 현재 진행 단계 (필수 항목 기준)
@@ -489,6 +497,12 @@ function WritePageInner() {
               "후기 등록하기 →"
             )}
           </button>
+
+          {submitError && (
+            <p className="text-sm text-center text-red-500 bg-red-50 rounded-xl px-4 py-3 -mt-3">
+              ⚠️ {submitError}
+            </p>
+          )}
 
           {!isValid && (nickname || incomeRange || satisfaction || content) && (
             <p className="text-xs text-center text-slate-400 -mt-3">

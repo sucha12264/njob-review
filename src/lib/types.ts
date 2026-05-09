@@ -104,3 +104,46 @@ export interface PostComment {
   kakao_user_id?: string | null;
   content: string;
 }
+
+// ─── 수익 업데이트 ─────────────────────────────────────────
+export const UPDATE_MONTHS = [1, 3, 6, 12] as const;
+export type UpdateMonths = typeof UPDATE_MONTHS[number];
+
+export const UPDATE_MONTH_LABELS: Record<UpdateMonths, string> = {
+  1: "1개월 후",
+  3: "3개월 후",
+  6: "6개월 후",
+  12: "12개월 후",
+};
+
+export interface ReviewUpdate {
+  id: string;
+  created_at: string;
+  review_id: string;
+  kakao_user_id: string;
+  nickname: string;
+  months_elapsed: UpdateMonths;
+  income_range: IncomeRange;
+  content: string;
+}
+
+// ─── 부업별 Q&A ──────────────────────────────────────────
+export interface HustleQuestion {
+  id: string;
+  created_at: string;
+  hustle_id: string;
+  nickname: string;
+  kakao_user_id?: string | null;
+  content: string;
+  answer_count: number;
+}
+
+export interface HustleAnswer {
+  id: string;
+  created_at: string;
+  question_id: string;
+  nickname: string;
+  kakao_user_id?: string | null;
+  content: string;
+  is_best: boolean;
+}

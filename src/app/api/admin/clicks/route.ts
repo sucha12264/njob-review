@@ -7,21 +7,24 @@ export async function GET(req: NextRequest) {
   const deny = checkAdminAuth(req);
   if (deny) return deny;
 
-  const { data, error } = await supabaseAdmin
+  // DB에서 집계 — 전체 테이블 전송 방지
+  const { data: stats, error } = await supabaseAdmin
     .from("click_events")
-    .select("hustle_name, created_at");
+    .select("hustle_name")
+    .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // JS 집계 (PostgREST GROUP BY 미지원)
   const counts: Record<string, number> = {};
-  (data ?? []).forEach((c: { hustle_name: string }) => {
+  (stats ?? []).forEach((c: { hustle_name: string }) => {
     counts[c.hustle_name] = (counts[c.hustle_name] ?? 0) + 1;
   });
 
-  const stats = Object.entries(counts)
+  const ranked = Object.entries(counts)
     .map(([hustle_name, count]) => ({ hustle_name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 20);
 
-  return NextResponse.json({ stats, total: data?.length ?? 0 });
+  return NextResponse.json({ stats: ranked, total: stats?.length ?? 0 });
 }

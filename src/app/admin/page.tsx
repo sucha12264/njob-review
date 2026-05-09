@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Review } from "@/lib/types";
 import { INCOME_LABELS } from "@/lib/types";
+import { ALL_HUSTLES } from "@/lib/hustleData";
 
 // ─── 타입 ─────────────────────────────────────────────
 interface Comment {
@@ -163,6 +164,8 @@ export default function AdminPage() {
       setReviews((prev) => prev.filter((r) => r.id !== id));
       setComments((prev) => prev.filter((c) => c.review_id !== id));
       setStats((prev) => ({ ...prev, total: prev.total - 1 }));
+    } else {
+      alert("삭제에 실패했어요. 다시 시도해주세요.");
     }
     setDeletingId(null);
   }
@@ -174,6 +177,8 @@ export default function AdminPage() {
     if (res.ok) {
       setComments((prev) => prev.filter((c) => c.id !== id));
       setStats((prev) => ({ ...prev, totalComments: Math.max(0, prev.totalComments - 1) }));
+    } else {
+      alert("댓글 삭제에 실패했어요. 다시 시도해주세요.");
     }
     setDeletingCommentId(null);
   }
@@ -184,7 +189,11 @@ export default function AdminPage() {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
-    if (res.ok) setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    if (res.ok) {
+      setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    } else {
+      alert("상태 변경에 실패했어요.");
+    }
     setResolvingReportId(null);
   }
 
@@ -684,7 +693,7 @@ export default function AdminPage() {
                 className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-indigo-400"
               />
               <div className="text-xs text-slate-400 whitespace-nowrap">
-                캐시 {summaries.length}개 / 전체 63개
+                캐시 {summaries.length}개 / 전체 {ALL_HUSTLES.length}개
               </div>
             </div>
 
@@ -692,12 +701,12 @@ export default function AdminPage() {
             <div className="card p-4 mb-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-slate-700">캐시 커버리지</span>
-                <span className="text-sm font-bold text-indigo-600">{Math.round((summaries.length / 63) * 100)}%</span>
+                <span className="text-sm font-bold text-indigo-600">{Math.round((summaries.length / ALL_HUSTLES.length) * 100)}%</span>
               </div>
               <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-indigo-500 rounded-full transition-all"
-                  style={{ width: `${(summaries.length / 63) * 100}%` }}
+                  style={{ width: `${(summaries.length / ALL_HUSTLES.length) * 100}%` }}
                 />
               </div>
               <div className="flex gap-4 mt-3 text-xs text-slate-500">

@@ -31,9 +31,7 @@ function KakaoAuthButtonInner() {
         window.history.replaceState({}, "", returnUrl);
       } catch {}
     } else if (loginStatus === "fail") {
-      const reason = searchParams.get("reason") ?? "알 수 없는 오류";
-      alert(`카카오 로그인에 실패했어요.\n\n오류: ${reason}`);
-      // 실패 시에도 원래 페이지로
+      // 실패 시에도 원래 페이지로 복귀 (reason은 무시 — 내부 오류 노출 방지)
       const returnUrl = sessionStorage.getItem("kakao_return_url") ?? "/";
       sessionStorage.removeItem("kakao_return_url");
       window.history.replaceState({}, "", returnUrl);

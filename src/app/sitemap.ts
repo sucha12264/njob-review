@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   let reviewUrls: MetadataRoute.Sitemap = [];
+  let boardUrls: MetadataRoute.Sitemap = [];
   try {
     const supabase = createClient(
       (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)!,
@@ -32,16 +33,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }));
     }
+
+    // 게시판 게시글
+    const { data: posts } = await supabase
+      .from("posts")
+      .select("id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (posts) {
+      boardUrls = posts.map((p: { id: string; created_at: string }) => ({
+        url: `${BASE_URL}/board/${p.id}`,
+        lastModified: new Date(p.created_at),
+        changeFrequency: "weekly" as const,
+        priority: 0.5,
+      }));
+    }
   } catch {
-    // Supabase 연결 실패 시 후기 URL 제외하고 계속
+    // Supabase 연결 실패 시 동적 URL 제외하고 계속
   }
 
   return [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
+    { url: `${BASE_URL}/ranking`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${BASE_URL}/board`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE_URL}/write`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     ...hustleUrls,
     ...reviewUrls,
+    ...boardUrls,
   ];
 }

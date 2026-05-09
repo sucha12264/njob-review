@@ -122,10 +122,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         prev.map((r) => (r.id === id ? { ...r, likes: r.likes + delta } : r))
       );
 
-      // 서버 동기화
+      // 서버 동기화 — 실패 시 롤백
       try {
         const kakaoUser = getStoredUser();
-        await fetch(`/api/reviews/${id}/like`, {
+        const res = await fetch(`/api/reviews/${id}/like`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -133,7 +133,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             kakao_user_id: kakaoUser ? String(kakaoUser.id) : undefined,
           }),
         });
-      } catch {}
+        if (!res.ok) throw new Error("like sync failed");
+      } catch (err) {
+        // 서버 동기화 실패 → 낙관적 업데이트 롤백
+        console.error("좋아요 동기화 실패:", err);
+        setLikedIds((prev) => {
+          const rolled = new Set(prev);
+          if (isLiked) { rolled.add(id); } else { rolled.delete(id); }
+          localStorage.setItem("njob_likes", JSON.stringify([...rolled]));
+          return rolled;
+        });
+        setReviews((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, likes: r.likes - delta } : r))
+        );
+      }
     },
     [likedIds]
   );

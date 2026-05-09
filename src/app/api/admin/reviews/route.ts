@@ -7,22 +7,31 @@ export async function GET(req: NextRequest) {
   const deny = checkAdminAuth(req);
   if (deny) return deny;
 
-  const { data, error } = await supabaseAdmin
+  // 목록: 전체 필드 조회
+  const { data: reviews, error } = await supabaseAdmin
     .from("reviews")
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 통계: 별도 count 쿼리 (전체 스캔 최소화)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
-  const reviews = data ?? [];
+  const [{ count: totalCount }, { count: todayCount }, { count: proofCount }] = await Promise.all([
+    supabaseAdmin.from("reviews").select("*", { count: "exact", head: true }),
+    supabaseAdmin.from("reviews").select("*", { count: "exact", head: true })
+      .gte("created_at", todayStart.toISOString()),
+    supabaseAdmin.from("reviews").select("*", { count: "exact", head: true })
+      .not("proof_image_url", "is", null),
+  ]);
+
   const stats = {
-    total: reviews.length,
-    today: reviews.filter((r) => new Date(r.created_at) >= today).length,
-    withProof: reviews.filter((r) => r.proof_image_url).length,
+    total: totalCount ?? 0,
+    today: todayCount ?? 0,
+    withProof: proofCount ?? 0,
   };
 
-  return NextResponse.json({ reviews, stats });
+  return NextResponse.json({ reviews: reviews ?? [], stats });
 }

@@ -65,13 +65,22 @@ export async function GET(req: NextRequest) {
       profileImage: userData.kakao_account?.profile?.profile_image_url || null,
     };
 
-    // 3. 유저 정보를 쿼리스트링으로 전달 (클라이언트에서 저장)
+    // 3. httpOnly 세션 쿠키 설정 (IDOR 방지: 서버만 읽을 수 있음)
+    //    유저 표시 정보는 URL 파라미터로 전달해 클라이언트 localStorage에 저장
     const params = new URLSearchParams({
       user: JSON.stringify(user),
     });
-    return NextResponse.redirect(
+    const redirectRes = NextResponse.redirect(
       new URL(`/?login=success&${params}`, req.url)
     );
+    redirectRes.cookies.set("njob_uid", String(user.id), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30, // 30일
+      path: "/",
+    });
+    return redirectRes;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("카카오 로그인 에러:", msg);
