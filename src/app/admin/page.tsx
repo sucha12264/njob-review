@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Review } from "@/lib/types";
 import { INCOME_LABELS } from "@/lib/types";
-import { ALL_HUSTLES } from "@/lib/hustleData";
 
 // ─── 타입 ─────────────────────────────────────────────
 interface Comment {
@@ -25,19 +24,7 @@ interface Report {
   status: "pending" | "resolved" | "dismissed";
 }
 
-interface Summary {
-  hustle_id: string;
-  hustle_name: string;
-  verdict: "긍정적" | "중립" | "부정적";
-  summary: string;
-  pros: string[];
-  cons: string[];
-  best_for: string;
-  review_count: number;
-  updated_at: string;
-}
-
-type Tab = "reviews" | "comments" | "clicks" | "reports" | "summaries";
+type Tab = "reviews" | "comments" | "clicks" | "reports";
 
 // ─── 유틸 ─────────────────────────────────────────────
 function timeAgo(dateStr: string) {
@@ -59,7 +46,6 @@ export default function AdminPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [clickStats, setClickStats] = useState<{ hustle_name: string; count: number }[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
-  const [summaries, setSummaries] = useState<Summary[]>([]);
   const [stats, setStats] = useState({ total: 0, today: 0, withProof: 0, totalComments: 0 });
   const [loading, setLoading] = useState(false);
 
@@ -67,12 +53,10 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [commentSearch, setCommentSearch] = useState("");
   const [reportSearch, setReportSearch] = useState("");
-  const [summarySearch, setSummarySearch] = useState("");
   const [filterHustle, setFilterHustle] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [resolvingReportId, setResolvingReportId] = useState<string | null>(null);
-  const [deletingSummaryId, setDeletingSummaryId] = useState<string | null>(null);
 
   // ─── API 헬퍼 ─────────────────────────────────────────
   const adminFetch = useCallback(
@@ -92,12 +76,11 @@ export default function AdminPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [revRes, cmmRes, clkRes, rptRes, sumRes] = await Promise.all([
+      const [revRes, cmmRes, clkRes, rptRes] = await Promise.all([
         adminFetch("/api/admin/reviews"),
         adminFetch("/api/admin/comments"),
         adminFetch("/api/admin/clicks"),
         adminFetch("/api/admin/reports"),
-        adminFetch("/api/admin/summaries"),
       ]);
 
       if (revRes.ok) {
@@ -120,10 +103,6 @@ export default function AdminPage() {
       if (rptRes.ok) {
         const { reports: rpt } = await rptRes.json() as { reports: Report[] };
         setReports(rpt);
-      }
-      if (sumRes.ok) {
-        const { summaries: sum } = await sumRes.json() as { summaries: Summary[] };
-        setSummaries(sum);
       }
     } finally {
       setLoading(false);
@@ -197,14 +176,6 @@ export default function AdminPage() {
     setResolvingReportId(null);
   }
 
-  async function deleteSummary(hustleId: string) {
-    if (!confirm("이 AI 요약 캐시를 삭제할까요?")) return;
-    setDeletingSummaryId(hustleId);
-    const res = await adminFetch(`/api/admin/summaries/${hustleId}`, { method: "DELETE" });
-    if (res.ok) setSummaries((prev) => prev.filter((s) => s.hustle_id !== hustleId));
-    setDeletingSummaryId(null);
-  }
-
   // ─── 필터 ─────────────────────────────────────────────
   const hustleIds = ["all", ...Array.from(new Set(reviews.map((r) => r.hustle_id)))];
   const filtered = reviews.filter((r) => {
@@ -230,22 +201,9 @@ export default function AdminPage() {
           r.type.includes(reportSearch.toLowerCase())
       )
     : reports;
-  const filteredSummaries = summarySearch
-    ? summaries.filter(
-        (s) =>
-          s.hustle_name.toLowerCase().includes(summarySearch.toLowerCase()) ||
-          s.verdict.includes(summarySearch)
-      )
-    : summaries;
 
   const reviewMap = Object.fromEntries(reviews.map((r) => [r.id, r]));
   const pendingCount = reports.filter((r) => r.status === "pending").length;
-
-  const verdictBadge = {
-    긍정적: "bg-green-100 text-green-700",
-    중립: "bg-amber-100 text-amber-700",
-    부정적: "bg-red-100 text-red-700",
-  };
 
   // ─── 로그인 화면 ───────────────────────────────────────
   if (!authed) {
@@ -328,7 +286,6 @@ export default function AdminPage() {
               { key: "comments", label: "💬 댓글 관리" },
               { key: "clicks", label: "📊 클릭 통계" },
               { key: "reports", label: "🚨 신고 관리", badge: pendingCount },
-              { key: "summaries", label: "🤖 AI 요약" },
             ] as { key: Tab; label: string; badge?: number }[]
           ).map((tab) => (
             <button
@@ -681,116 +638,6 @@ export default function AdminPage() {
           </>
         )}
 
-        {/* ─── AI 요약 관리 ─── */}
-        {activeTab === "summaries" && (
-          <>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
-              <input
-                type="text"
-                value={summarySearch}
-                onChange={(e) => setSummarySearch(e.target.value)}
-                placeholder="부업명, 판정 검색..."
-                className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-indigo-400"
-              />
-              <div className="text-xs text-slate-400 whitespace-nowrap">
-                캐시 {summaries.length}개 / 전체 {ALL_HUSTLES.length}개
-              </div>
-            </div>
-
-            {/* 캐시 커버리지 바 */}
-            <div className="card p-4 mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-slate-700">캐시 커버리지</span>
-                <span className="text-sm font-bold text-indigo-600">{Math.round((summaries.length / ALL_HUSTLES.length) * 100)}%</span>
-              </div>
-              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-indigo-500 rounded-full transition-all"
-                  style={{ width: `${(summaries.length / ALL_HUSTLES.length) * 100}%` }}
-                />
-              </div>
-              <div className="flex gap-4 mt-3 text-xs text-slate-500">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-                  긍정적 {summaries.filter((s) => s.verdict === "긍정적").length}개
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-                  중립 {summaries.filter((s) => s.verdict === "중립").length}개
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
-                  부정적 {summaries.filter((s) => s.verdict === "부정적").length}개
-                </span>
-              </div>
-            </div>
-
-            <div className="card overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-slate-500 font-semibold">부업명</th>
-                    <th className="text-left px-4 py-3 text-slate-500 font-semibold">판정</th>
-                    <th className="text-left px-4 py-3 text-slate-500 font-semibold">요약</th>
-                    <th className="text-left px-4 py-3 text-slate-500 font-semibold">기반 후기</th>
-                    <th className="text-left px-4 py-3 text-slate-500 font-semibold">업데이트</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {loading ? (
-                    <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">불러오는 중...</td></tr>
-                  ) : filteredSummaries.length === 0 ? (
-                    <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">캐시된 요약이 없어요</td></tr>
-                  ) : (
-                    filteredSummaries.map((s) => (
-                      <tr key={s.hustle_id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
-                          <a
-                            href={`/hustle/${s.hustle_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-indigo-600 transition-colors"
-                          >
-                            {s.hustle_name}
-                          </a>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${verdictBadge[s.verdict]}`}>
-                            {s.verdict}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500 text-xs max-w-[280px]">
-                          <span className="line-clamp-2">{s.summary}</span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs text-center">
-                          {s.review_count}개
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
-                          {timeAgo(s.updated_at)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => deleteSummary(s.hustle_id)}
-                            disabled={deletingSummaryId === s.hustle_id}
-                            className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors disabled:opacity-40"
-                          >
-                            {deletingSummaryId === s.hustle_id ? "삭제 중..." : "캐시 삭제"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-              {filteredSummaries.length > 0 && (
-                <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400">
-                  총 {filteredSummaries.length}개 요약 캐시
-                </div>
-              )}
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
