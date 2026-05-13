@@ -238,6 +238,51 @@ export default function RecommendPage() {
         </div>
 
         <div className="mx-auto max-w-4xl px-4 py-8 space-y-12">
+
+          {/* 요즘 떠오르는 부업 — 피처드 섹션 */}
+          {(() => {
+            const featured = ALL_ACTIVE.filter((h) => h.isHot && h.isNew).slice(0, 3);
+            if (featured.length === 0) return null;
+            return (
+              <section>
+                <div className="rounded-2xl overflow-hidden border border-orange-200">
+                  {/* 헤더 */}
+                  <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 flex items-center gap-2">
+                    <span className="text-lg">🔥</span>
+                    <span className="text-white font-black text-sm">요즘 떠오르는 부업</span>
+                  </div>
+                  {/* 카드 목록 */}
+                  <div className="bg-white divide-y divide-orange-50">
+                    {featured.map((h) => (
+                      <div key={h.id} className="flex items-center gap-4 px-4 py-4">
+                        <span className="text-3xl flex-shrink-0">{h.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <p className="font-black text-slate-800 text-sm">{h.name}</p>
+                            {h.tags?.map((tag) => (
+                              <span key={tag} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                                ★ {tag}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-xs text-slate-400 line-clamp-1">
+                            초기비용 {h.startupCost} · {h.oneline}
+                          </p>
+                        </div>
+                        <Link
+                          href={`/hustle/${h.id}`}
+                          className="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
+                        >
+                          자세히 보기 →
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
           {SCENARIOS.map((scenario) => (
             <section key={scenario.id} id={scenario.id} className="scroll-mt-28">
               {/* 섹션 헤더 */}
