@@ -144,8 +144,8 @@ export function middleware(request: NextRequest) {
         );
       }
 
-      // API Rate Limit: 1분에 20회 (일반 rate limit보다 엄격)
-      const allowed = edgeRateLimit(`api:${ip}`, 20, 60_000);
+      // API Rate Limit: 1분에 200회 (Vercel 서버리스는 멀티 인스턴스라 실효성 낮음 — 극단적 봇만 차단)
+      const allowed = edgeRateLimit(`api:${ip}`, 200, 60_000);
       if (!allowed) {
         return new NextResponse(
           JSON.stringify({ error: "Too Many Requests" }),
@@ -155,8 +155,8 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // ── 4. 페이지 Rate Limit: IP당 1분 30회 ─────────────────
-  const pageAllowed = edgeRateLimit(`page:${ip}`, 30, 60_000);
+  // ── 4. 페이지 Rate Limit: IP당 1분 500회 (극단적 봇만 차단)
+  const pageAllowed = edgeRateLimit(`page:${ip}`, 500, 60_000);
   if (!pageAllowed) {
     return new NextResponse("Too Many Requests", { status: 429 });
   }
