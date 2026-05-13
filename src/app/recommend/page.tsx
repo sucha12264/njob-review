@@ -138,7 +138,8 @@ const SCENARIOS: Scenario[] = [
         h.id === "bgm-music" ||
         h.id === "stock-dividend" ||
         h.id === "etf-investing" ||
-        h.id === "figma-template"
+        h.id === "figma-template" ||
+        h.id === "n-telecom"
     ).slice(0, 8),
   },
 ];
@@ -158,6 +159,15 @@ function HustleCard({ hustle }: { hustle: SideHustle }) {
           {hustle.name}
         </p>
         <p className="text-xs text-slate-400 truncate">{hustle.oneline}</p>
+        {hustle.tags && hustle.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {hustle.tags.map((tag) => (
+              <span key={tag} className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                ★ {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <div className="text-right flex-shrink-0">
         <p className="text-xs font-bold text-indigo-600">{hustle.incomeRange}</p>

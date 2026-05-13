@@ -27,6 +27,8 @@ export interface SideHustle {
   isNew?: boolean;
   /** 서비스 종료된 부업 (예: 카카오뷰) */
   isTerminated?: boolean;
+  /** 추천 페이지 등에 표시할 커스텀 뱃지 */
+  tags?: string[];
 }
 
 export const HUSTLE_CATEGORIES: HustleCategory[] = [
@@ -903,16 +905,19 @@ export const ALL_HUSTLES: SideHustle[] = [
   },
   {
     id: "n-telecom",
-    name: "앤텔레콤 대리점",
+    name: "앤텔레콤 선불폰·알뜰폰 온라인 대리점",
     emoji: "📞",
     category: "기타",
-    oneline: "알뜰폰 요금제 가입 유치로 건당 수수료",
-    description: "앤텔레콤 대리점·총판으로 등록해 지인이나 SNS를 통해 알뜰폰 요금제 가입자를 유치하면 건당 수수료를 받는 부업. 초기 비용 없이 시작 가능하고, 가입자를 꾸준히 늘릴수록 월 수익이 누적된다. 통신 지식이 없어도 시작할 수 있으나 지인 네트워크나 SNS 채널이 있으면 유리하다.",
-    incomeRange: "건당 1~5만원",
-    startupCost: "무료",
-    timeToFirst: "즉시",
+    oneline: "선불폰·알뜰폰 요금제 온라인 대리점 운영 · 전문 온라인 마케팅 무료 교육 제공",
+    description: "앤텔레콤 온라인 대리점 등록을 통해 온라인 마케팅으로 알뜰폰·선불폰 요금제 가입자를 유치하면 건당 수수료를 받는 부업. 가입자를 꾸준히 늘릴수록 월 수익이 누적되는 파이프라인 구조. 통신·마케팅 지식이 없어도 시작 가능하며 온라인 마케팅 방법을 무료로 교육해준다. 초기 비용 116만원 중 50만원어치 요금은 본인 사용하거나 타인에게 양도해 현금으로 바꾸는 것도 가능하다.",
+    incomeRange: "월 수수료 누적",
+    startupCost: "116만원 (KT·LG 비대면 개통 전산 포함)",
+    timeToFirst: "등록 후",
     difficulty: 2,
-    officialUrl: "https://www.ntelecom.co.kr",
+    officialUrl: "https://blog.naver.com/leted1968/224072273734",
+    isHot: true,
+    isNew: true,
+    tags: ["파이프라인 부업", "매달 자동수수료"],
   },
   {
     id: "game-boosting",
