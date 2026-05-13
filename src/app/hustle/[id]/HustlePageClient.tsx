@@ -416,8 +416,7 @@ export default function HustlePageClient({ hustle, guide }: Props) {
         📱
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] font-black text-indigo-700 leading-tight">서브폰 개통이 필요하다면?</p>
-        <p className="text-[10px] text-slate-400 leading-tight">선불폰 · 알뜰폰</p>
+        <p className="text-[11px] font-black text-indigo-700 leading-tight">서브폰(선불폰, 알뜰폰) 개통이 필요하다면?</p>
       </div>
     </a>
     </>
