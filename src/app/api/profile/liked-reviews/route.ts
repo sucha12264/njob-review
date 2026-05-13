@@ -1,0 +1,42 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase.server";
+
+// GET /api/profile/liked-reviews?kakao_user_id=xxx
+// 카카오 로그인 유저가 좋아요한 후기 목록 (전체 Review 객체) 반환
+export async function GET(req: NextRequest) {
+  const kakaoUserId = req.nextUrl.searchParams.get("kakao_user_id");
+  if (!kakaoUserId) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  // user_likes → reviews JOIN
+  const { data: likeRows, error: likesError } = await supabaseAdmin
+    .from("user_likes")
+    .select("review_id")
+    .eq("user_id", kakaoUserId)
+    .order("created_at", { ascending: false });
+
+  if (likesError || !likeRows || likeRows.length === 0) {
+    return NextResponse.json([]);
+  }
+
+  const reviewIds = likeRows.map((row: { review_id: string }) => row.review_id);
+
+  const { data: reviews, error: reviewsError } = await supabaseAdmin
+    .from("reviews")
+    .select("*")
+    .in("id", reviewIds)
+    .not("hustle_id", "like", "__hp__%");
+
+  if (reviewsError) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  // likeRows 순서 유지 (최신 좋아요 먼저)
+  const reviewMap = new Map((reviews ?? []).map((r: Record<string, unknown>) => [r.id, r]));
+  const ordered = reviewIds
+    .map((id: string) => reviewMap.get(id))
+    .filter(Boolean);
+
+  return NextResponse.json(ordered);
+}

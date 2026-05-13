@@ -16,8 +16,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const hustle = HUSTLE_MAP[id];
   if (!hustle) return {};
 
+  const guide = HUSTLE_GUIDES[id] ?? null;
+  const prosSnippet = guide?.pros.slice(0, 2).join(", ");
   const title = `${hustle.name} 후기 & 수익 정보 | N잡 후기판`;
-  const description = `${hustle.name} 실제 경험자 후기 모음. 예상 수익 ${hustle.incomeRange}, 난이도·초기비용·첫 수익까지 기간을 한눈에 확인하세요.`;
+  const description = prosSnippet
+    ? `${hustle.name} 실제 후기 모음. ${hustle.oneline}. 예상 수익 ${hustle.incomeRange}, 난이도 ${["", "매우쉬움", "쉬움", "보통", "어려움", "매우어려움"][hustle.difficulty]}. 장점: ${prosSnippet}.`
+    : `${hustle.name} 실제 경험자 후기 모음. ${hustle.oneline}. 예상 수익 ${hustle.incomeRange}, 초기비용 ${hustle.startupCost}, 첫 수익까지 ${hustle.timeToFirst}.`;
   const url = `${BASE_URL}/hustle/${id}`;
 
   return {

@@ -10,24 +10,40 @@ import {
 } from "react";
 import { MOCK_REVIEWS } from "./mockData";
 import { getStoredUser } from "./kakaoAuth";
+import { ALL_HUSTLES } from "./hustleData";
 import type { Review, ReviewInput, IncomeRange } from "./types";
+import type { HustleCategory } from "./hustleData";
+
+// 0 = 전체, 2 = 쉬움이하(<=2), 3 = 보통이하(<=3), 4 = 어려운부업(>=4)
+export type DifficultyFilter = 0 | 2 | 3 | 4;
+export type SatisfactionFilter = 0 | 1 | 2 | 3 | 4 | 5; // 0 = 전체 (min)
 
 interface StoreState {
   reviews: Review[];
   likedIds: Set<string>;
   filterCategory: string;
   filterHustleId: string;
-  sortBy: "latest" | "likes" | "income";
+  filterReviewCategory: HustleCategory | "all";
+  filterIncome: IncomeRange | "";
+  filterDifficulty: DifficultyFilter;
+  filterSatisfaction: SatisfactionFilter;
+  sortBy: "latest" | "likes" | "income" | "satisfaction";
   searchQuery: string;
   loading: boolean;
   activeTab: "directory" | "reviews";
+  activeFilterCount: number;
   setActiveTab: (tab: "directory" | "reviews") => void;
   setFilterCategory: (cat: string) => void;
   setFilterHustleId: (id: string) => void;
-  setSort: (sort: "latest" | "likes" | "income") => void;
+  setFilterReviewCategory: (cat: HustleCategory | "all") => void;
+  setFilterIncome: (v: IncomeRange | "") => void;
+  setFilterDifficulty: (v: DifficultyFilter) => void;
+  setFilterSatisfaction: (v: SatisfactionFilter) => void;
+  resetFilters: () => void;
+  setSort: (sort: "latest" | "likes" | "income" | "satisfaction") => void;
   setSearch: (query: string) => void;
   toggleLike: (id: string) => void;
-  addReview: (input: ReviewInput & { kakao_user_id?: string | null }) => Promise<Review>;
+  addReview: (input: ReviewInput & { kakao_user_id?: string | null; anon_password?: string }) => Promise<Review>;
   getReviewById: (id: string) => Review | undefined;
   getReviewsByHustle: (hustleId: string) => Review[];
   filteredReviews: Review[];
@@ -42,7 +58,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [filterCategory, setFilterCategoryState] = useState("all");
   const [filterHustleId, setFilterHustleIdState] = useState("all");
-  const [sortBy, setSortBy] = useState<"latest" | "likes" | "income">("latest");
+  const [filterReviewCategory, setFilterReviewCategoryState] = useState<HustleCategory | "all">("all");
+  const [filterIncome, setFilterIncomeState] = useState<IncomeRange | "">("");
+  const [filterDifficulty, setFilterDifficultyState] = useState<DifficultyFilter>(0);
+  const [filterSatisfaction, setFilterSatisfactionState] = useState<SatisfactionFilter>(0);
+  const [sortBy, setSortBy] = useState<"latest" | "likes" | "income" | "satisfaction">("latest");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTabState] = useState<"directory" | "reviews">("directory");
@@ -102,7 +122,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFilterCategoryState("all");
   }, []);
 
-  const setSort = useCallback((sort: "latest" | "likes" | "income") => setSortBy(sort), []);
+  const setFilterReviewCategory = useCallback((cat: HustleCategory | "all") => setFilterReviewCategoryState(cat), []);
+  const setFilterIncome = useCallback((v: IncomeRange | "") => setFilterIncomeState(v), []);
+  const setFilterDifficulty = useCallback((v: DifficultyFilter) => setFilterDifficultyState(v), []);
+  const setFilterSatisfaction = useCallback((v: SatisfactionFilter) => setFilterSatisfactionState(v), []);
+
+  const resetFilters = useCallback(() => {
+    setFilterReviewCategoryState("all");
+    setFilterIncomeState("");
+    setFilterDifficultyState(0);
+    setFilterSatisfactionState(0);
+    setSearchQuery("");
+  }, []);
+
+  const setSort = useCallback((sort: "latest" | "likes" | "income" | "satisfaction") => setSortBy(sort), []);
   const setSearch = useCallback((query: string) => setSearchQuery(query), []);
 
   const toggleLike = useCallback(
@@ -152,7 +185,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const addReview = useCallback(
-    async (input: ReviewInput & { kakao_user_id?: string | null }): Promise<Review> => {
+    async (input: ReviewInput & { kakao_user_id?: string | null; anon_password?: string }): Promise<Review> => {
       try {
         const res = await fetch("/api/reviews", {
           method: "POST",
@@ -192,11 +225,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const q = searchQuery.trim().toLowerCase();
+  const activeFilterCount =
+    (filterReviewCategory !== "all" ? 1 : 0) +
+    (filterIncome ? 1 : 0) +
+    (filterDifficulty ? 1 : 0) +
+    (filterSatisfaction ? 1 : 0);
+
   const filteredReviews = reviews
     .filter((r) => {
       if (filterHustleId !== "all") return r.hustle_id === filterHustleId;
       return true;
     })
+    .filter((r) => {
+      if (filterReviewCategory === "all") return true;
+      const hustle = ALL_HUSTLES.find((h) => h.id === r.hustle_id);
+      return hustle?.category === filterReviewCategory;
+    })
+    .filter((r) => !filterIncome || r.income_range === filterIncome)
+    .filter((r) => {
+      if (!filterDifficulty) return true;
+      if (filterDifficulty === 4) return r.difficulty >= 4;
+      return r.difficulty <= filterDifficulty;
+    })
+    .filter((r) => !filterSatisfaction || r.satisfaction >= filterSatisfaction)
     .filter((r) => {
       if (q === "") return true;
       return (
@@ -212,6 +263,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (sortBy === "likes") return b.likes - a.likes;
       if (sortBy === "income")
         return INCOME_ORDER.indexOf(b.income_range) - INCOME_ORDER.indexOf(a.income_range);
+      if (sortBy === "satisfaction") return b.satisfaction - a.satisfaction;
       return 0;
     });
 
@@ -222,13 +274,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         likedIds,
         filterCategory,
         filterHustleId,
+        filterReviewCategory,
+        filterIncome,
+        filterDifficulty,
+        filterSatisfaction,
         sortBy,
         searchQuery,
         loading,
         activeTab,
+        activeFilterCount,
         setActiveTab,
         setFilterCategory,
         setFilterHustleId,
+        setFilterReviewCategory,
+        setFilterIncome,
+        setFilterDifficulty,
+        setFilterSatisfaction,
+        resetFilters,
         setSort,
         setSearch,
         toggleLike,

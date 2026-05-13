@@ -4,6 +4,7 @@ import Script from "next/script";
 import { StoreProvider } from "@/lib/store";
 import KakaoAuthButton from "@/components/KakaoAuthButton";
 import BottomNav from "@/components/BottomNav";
+import SearchTrigger from "@/components/SearchTrigger";
 import "./globals.css";
 
 const BASE_URL = "https://njob-review.vercel.app";
@@ -49,6 +50,9 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true },
+  },
+  verification: {
+    google: "KO1HpFUZLiQ8iLZRdGgbZqKkoM2Vvrv8Ruez0A4L1Qs",
   },
 };
 
@@ -116,6 +120,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               </Link>
               <div className="flex items-center gap-2.5">
+                {/* 검색 — 모바일/데스크톱 모두 표시 */}
+                <SearchTrigger />
+                <Link
+                  href="/recommend"
+                  className="hidden sm:flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors px-2 py-1.5"
+                >
+                  🎯 <span className="hidden md:inline">추천</span>
+                </Link>
+                <Link
+                  href="/compare"
+                  className="hidden sm:flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors px-2 py-1.5"
+                >
+                  ⚖️ <span className="hidden md:inline">비교</span>
+                </Link>
                 <Link
                   href="/ranking"
                   className="hidden sm:flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors px-2 py-1.5"
@@ -171,6 +189,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <p className="font-semibold text-white mb-3">서비스</p>
                     <ul className="space-y-2">
                       <li><Link href="/" className="hover:text-white transition-colors">후기 목록</Link></li>
+                      <li><Link href="/recommend" className="hover:text-white transition-colors">부업 추천</Link></li>
+                      <li><Link href="/compare" className="hover:text-white transition-colors">부업 비교</Link></li>
                       <li><Link href="/ranking" className="hover:text-white transition-colors">부업 랭킹</Link></li>
                       <li><Link href="/board" className="hover:text-white transition-colors">자유게시판</Link></li>
                       <li><Link href="/write" className="hover:text-white transition-colors">후기 쓰기</Link></li>
