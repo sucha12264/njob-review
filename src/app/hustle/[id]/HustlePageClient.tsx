@@ -405,20 +405,6 @@ export default function HustlePageClient({ hustle, guide }: Props) {
       </div>
     </div>
 
-    {/* 서브폰 플로팅 버튼 */}
-    <a
-      href="https://planfix.kr"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="fixed bottom-20 right-4 z-40 flex items-center gap-2.5 bg-white border border-indigo-200 shadow-lg rounded-2xl px-3.5 py-2.5 hover:shadow-xl hover:border-indigo-400 transition-all group max-w-[220px]"
-    >
-      <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-indigo-200 transition-colors">
-        📱
-      </div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-black text-indigo-700 leading-tight">서브폰(선불폰, 알뜰폰) 개통이 필요하다면?</p>
-      </div>
-    </a>
-    </>
+</>
   );
 }
