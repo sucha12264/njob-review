@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Review } from "@/lib/types";
-import { INCOME_LABELS } from "@/lib/types";
+import { INCOME_LABELS, type IncomeRange } from "@/lib/types";
+import { ALL_HUSTLES } from "@/lib/hustleData";
 
 // ─── 타입 ─────────────────────────────────────────────
 interface Comment {
@@ -24,7 +25,7 @@ interface Report {
   status: "pending" | "resolved" | "dismissed";
 }
 
-type Tab = "reviews" | "comments" | "clicks" | "reports";
+type Tab = "reviews" | "comments" | "clicks" | "reports" | "write";
 
 // ─── 유틸 ─────────────────────────────────────────────
 function timeAgo(dateStr: string) {
@@ -282,6 +283,7 @@ export default function AdminPage() {
         <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">
           {(
             [
+              { key: "write", label: "✏️ 후기 등록" },
               { key: "reviews", label: "📝 후기 관리" },
               { key: "comments", label: "💬 댓글 관리" },
               { key: "clicks", label: "📊 클릭 통계" },
@@ -306,6 +308,11 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        {/* ─── 후기 등록 ─── */}
+        {activeTab === "write" && (
+          <QuickWriteTab adminFetch={adminFetch} onSuccess={loadData} />
+        )}
 
         {/* ─── 후기 관리 ─── */}
         {activeTab === "reviews" && (
@@ -639,6 +646,228 @@ export default function AdminPage() {
         )}
 
       </div>
+    </div>
+  );
+}
+
+// ─── 후기 빠른 등록 컴포넌트 ────────────────────────────
+const INCOME_RANGES = Object.keys(INCOME_LABELS) as IncomeRange[];
+const ACTIVE_HUSTLES = ALL_HUSTLES.filter((h) => !h.isTerminated);
+
+function QuickWriteTab({
+  adminFetch,
+  onSuccess,
+}: {
+  adminFetch: (path: string, options?: RequestInit) => Promise<Response>;
+  onSuccess: () => void;
+}) {
+  const initForm = () => ({
+    hustleId: "",
+    nickname: "",
+    satisfaction: 5,
+    incomeRange: "" as IncomeRange | "",
+    difficulty: 3,
+    weeklyHours: 5,
+    title: "",
+    content: "",
+    pros: "",
+    cons: "",
+    recommend: true,
+  });
+
+  const [form, setForm] = useState(initForm);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(0);
+  const [error, setError] = useState("");
+
+  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+
+  const selectedHustle = ACTIVE_HUSTLES.find((h) => h.id === form.hustleId);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedHustle || !form.incomeRange || !form.content.trim()) {
+      setError("부업, 수익, 내용은 필수예요.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await adminFetch("/api/reviews", {
+        method: "POST",
+        body: JSON.stringify({
+          hustle_id: selectedHustle.id,
+          hustle_name: selectedHustle.name,
+          nickname: form.nickname || "익명",
+          satisfaction: form.satisfaction,
+          income_range: form.incomeRange,
+          difficulty: form.difficulty,
+          weekly_hours: form.weeklyHours,
+          title: form.title || `${selectedHustle.name} 후기`,
+          content: form.content.trim(),
+          pros: form.pros.trim(),
+          cons: form.cons.trim(),
+          recommend: form.recommend,
+          proof_image_url: null,
+          kakao_user_id: null,
+        }),
+      });
+      if (!res.ok) throw new Error("등록 실패");
+      setDone((n) => n + 1);
+      setForm(initForm());
+      onSuccess();
+    } catch {
+      setError("등록에 실패했어요.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="max-w-2xl">
+      {done > 0 && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-semibold">
+          ✅ 이 세션에서 {done}개 후기를 등록했어요
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="card p-6 space-y-4">
+        {/* 부업 선택 */}
+        <div>
+          <label className="text-xs font-bold text-slate-600 block mb-1.5">부업 선택 *</label>
+          <select
+            value={form.hustleId}
+            onChange={(e) => set("hustleId", e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-indigo-400"
+          >
+            <option value="">-- 부업을 선택하세요 --</option>
+            {ACTIVE_HUSTLES.map((h) => (
+              <option key={h.id} value={h.id}>{h.emoji} {h.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* 닉네임 */}
+          <div>
+            <label className="text-xs font-bold text-slate-600 block mb-1.5">닉네임</label>
+            <input
+              type="text"
+              value={form.nickname}
+              onChange={(e) => set("nickname", e.target.value)}
+              placeholder="익명"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+            />
+          </div>
+          {/* 주 투자시간 */}
+          <div>
+            <label className="text-xs font-bold text-slate-600 block mb-1.5">주 투자시간(h)</label>
+            <input
+              type="number"
+              value={form.weeklyHours}
+              onChange={(e) => set("weeklyHours", Number(e.target.value))}
+              min={0} max={80}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* 만족도 */}
+          <div>
+            <label className="text-xs font-bold text-slate-600 block mb-1.5">만족도 (1-5)</label>
+            <div className="flex gap-1">
+              {[1,2,3,4,5].map((n) => (
+                <button key={n} type="button" onClick={() => set("satisfaction", n)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${form.satisfaction >= n ? "bg-amber-400 text-white" : "bg-slate-100 text-slate-400"}`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* 난이도 */}
+          <div>
+            <label className="text-xs font-bold text-slate-600 block mb-1.5">난이도 (1-5)</label>
+            <div className="flex gap-1">
+              {[1,2,3,4,5].map((n) => (
+                <button key={n} type="button" onClick={() => set("difficulty", n)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${form.difficulty === n ? "bg-indigo-500 text-white" : "bg-slate-100 text-slate-400"}`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 수익 범위 */}
+        <div>
+          <label className="text-xs font-bold text-slate-600 block mb-1.5">월 수익 *</label>
+          <div className="flex flex-wrap gap-1.5">
+            {INCOME_RANGES.map((r) => (
+              <button key={r} type="button" onClick={() => set("incomeRange", r)}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${form.incomeRange === r ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500 hover:border-indigo-300"}`}>
+                {INCOME_LABELS[r]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 제목 */}
+        <div>
+          <label className="text-xs font-bold text-slate-600 block mb-1.5">제목 (비우면 자동생성)</label>
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => set("title", e.target.value)}
+            placeholder={selectedHustle ? `${selectedHustle.name} 후기` : "제목"}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
+          />
+        </div>
+
+        {/* 본문 */}
+        <div>
+          <label className="text-xs font-bold text-slate-600 block mb-1.5">후기 본문 *</label>
+          <textarea
+            value={form.content}
+            onChange={(e) => set("content", e.target.value)}
+            rows={5}
+            placeholder="실제 경험 내용을 작성하세요..."
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 resize-none"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-bold text-slate-600 block mb-1.5">장점</label>
+            <textarea value={form.pros} onChange={(e) => set("pros", e.target.value)} rows={2}
+              placeholder="장점..." className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 resize-none" />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-600 block mb-1.5">단점</label>
+            <textarea value={form.cons} onChange={(e) => set("cons", e.target.value)} rows={2}
+              placeholder="단점..." className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 resize-none" />
+          </div>
+        </div>
+
+        {/* 추천 */}
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-bold text-slate-600">추천 여부</label>
+          <button type="button" onClick={() => set("recommend", !form.recommend)}
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${form.recommend ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+            {form.recommend ? "👍 추천" : "👎 비추"}
+          </button>
+        </div>
+
+        {error && <p className="text-xs text-red-500">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {submitting && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+          {submitting ? "등록 중..." : "✅ 후기 등록하기"}
+        </button>
+      </form>
     </div>
   );
 }

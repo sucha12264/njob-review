@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { ALL_HUSTLES } from "@/lib/hustleData";
+import { ALL_HUSTLES, CATEGORY_SLUG } from "@/lib/hustleData";
 import { createClient } from "@supabase/supabase-js";
 
 const BASE_URL = "https://side-job-checker.vercel.app";
@@ -53,6 +53,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Supabase 연결 실패 시 동적 URL 제외하고 계속
   }
 
+  const categoryUrls = Object.values(CATEGORY_SLUG).map((slug) => ({
+    url: `${BASE_URL}/category/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.85,
+  }));
+
   return [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
     { url: `${BASE_URL}/recommend`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.95 },
@@ -62,6 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/write`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    ...categoryUrls,
     ...hustleUrls,
     ...reviewUrls,
     ...boardUrls,

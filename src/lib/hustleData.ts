@@ -937,6 +937,24 @@ export const HUSTLE_MAP: Record<string, SideHustle> = Object.fromEntries(
   ALL_HUSTLES.map((h) => [h.id, h])
 );
 
+export const CATEGORY_SLUG: Record<HustleCategory, string> = {
+  "SNS·콘텐츠": "sns",
+  "제휴마케팅": "affiliate",
+  "재능판매": "talent",
+  "온라인강의": "lecture",
+  "쇼핑몰·판매": "shopping",
+  "리셀": "resell",
+  "앱테크·설문": "apptech",
+  "투자": "investment",
+  "배달·서비스": "delivery",
+  "디지털콘텐츠": "digital",
+  "기타": "etc",
+};
+
+export const SLUG_CATEGORY: Record<string, HustleCategory> = Object.fromEntries(
+  Object.entries(CATEGORY_SLUG).map(([cat, slug]) => [slug, cat as HustleCategory])
+);
+
 export function getHustlesByCategory(category: HustleCategory): SideHustle[] {
   return ALL_HUSTLES.filter((h) => h.category === category);
 }
