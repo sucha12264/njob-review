@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import RankingClient from "./RankingClient";
 import type { RankedHustle } from "@/app/api/ranking/route";
 
-const BASE_URL = "https://njob-review.vercel.app";
+const BASE_URL = "https://side-job-checker.vercel.app";
 
 export const metadata: Metadata = {
   title: "부업 랭킹 | 만족도·추천률·후기 수 TOP 순위",

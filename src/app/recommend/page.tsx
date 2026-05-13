@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ALL_HUSTLES } from "@/lib/hustleData";
 import type { SideHustle } from "@/lib/hustleData";
 
-const BASE_URL = "https://njob-review.vercel.app";
+const BASE_URL = "https://side-job-checker.vercel.app";
 
 export const metadata: Metadata = {
   title: "내게 맞는 부업 추천 | 상황별 N잡 추천 — N잡 후기판",

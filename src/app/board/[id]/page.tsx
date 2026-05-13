@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Post } from "@/lib/types";
 import PostDetailClient from "./PostDetailClient";
 
-const BASE_URL = "https://njob-review.vercel.app";
+const BASE_URL = "https://side-job-checker.vercel.app";
 
 export async function generateMetadata({
   params,

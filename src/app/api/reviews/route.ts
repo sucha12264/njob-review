@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { rateLimit } from "@/lib/rateLimit";
+import { hashAnonPassword } from "@/lib/serverAuth";
 
-// GET /api/reviews — 전체 후기 목록 (허니팟 제외)
+// GET /api/reviews — 후기 목록 (허니팟 제외, 페이지네이션 지원)
+// 쿼리 파라미터: page(기본 1), limit(기본 전체), hustle_id(선택)
 export async function GET(req: NextRequest) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -11,17 +13,43 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
   }
 
-  const { data, error } = await supabaseAdmin
+  const { searchParams } = new URL(req.url);
+  const hustleId = searchParams.get("hustle_id") ?? "";
+  const pageParam = searchParams.get("page");
+  const limitParam = searchParams.get("limit");
+
+  let query = supabaseAdmin
     .from("reviews")
-    .select("*")
+    .select("*", { count: "exact" })
     .not("hustle_id", "like", "__hp__%")
     .order("created_at", { ascending: false });
+
+  if (hustleId) {
+    query = query.eq("hustle_id", hustleId);
+  }
+
+  // 페이지네이션 (파라미터 없으면 전체 반환 — 하위 호환성 유지)
+  const page = pageParam ? Math.max(1, parseInt(pageParam)) : null;
+  const limit = limitParam ? Math.min(100, Math.max(1, parseInt(limitParam))) : null;
+
+  let finalQuery = query;
+  if (page !== null && limit !== null) {
+    const offset = (page - 1) * limit;
+    finalQuery = query.range(offset, offset + limit - 1);
+  }
+
+  const { data, error, count } = await finalQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? [], {
+  // 페이지네이션 요청이면 래퍼 객체 반환, 아니면 배열 그대로 (하위 호환)
+  const body = (page !== null && limit !== null)
+    ? { reviews: data ?? [], total: count ?? 0, page, limit }
+    : (data ?? []);
+
+  return NextResponse.json(body, {
     headers: {
       // 브라우저 캐시 30초, CDN 캐시 1분
       "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30",
@@ -45,6 +73,7 @@ export async function POST(req: NextRequest) {
       weekly_hours, difficulty, satisfaction, title,
       content, pros, cons, recommend,
       proof_image_url, kakao_user_id,
+      anon_password,           // 익명 작성 시 비밀번호 (선택)
     } = body;
 
     // 필수 항목 검증 (닉네임·부업·수익·만족도·본문만 필수)
@@ -68,6 +97,13 @@ export async function POST(req: NextRequest) {
       ? Boolean(recommend)
       : Number(satisfaction) >= 4;
 
+    // 익명 후기: 비밀번호 해시 + IP 저장
+    const isAnon = !kakao_user_id;
+    const anonPasswordHash =
+      isAnon && anon_password && String(anon_password).length >= 4
+        ? hashAnonPassword(String(anon_password))
+        : null;
+
     const { data, error } = await supabaseAdmin
       .from("reviews")
       .insert({
@@ -86,6 +122,8 @@ export async function POST(req: NextRequest) {
         proof_image_url: proof_image_url ?? null,
         kakao_user_id: kakao_user_id ?? null,
         likes: 0,
+        anon_password_hash: anonPasswordHash,
+        anon_ip: isAnon ? ip : null,
       })
       .select()
       .single();

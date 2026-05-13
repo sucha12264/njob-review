@@ -7,17 +7,33 @@ import type { Review } from "@/lib/types";
 import { INCOME_LABELS } from "@/lib/types";
 import ReviewCard from "@/components/ReviewCard";
 
+type ProfileTab = "my" | "liked";
+
 export default function ProfileClient() {
   const [user, setUser] = useState<KakaoUser | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [likedReviews, setLikedReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [likedLoading, setLikedLoading] = useState(false);
+  const [tab, setTab] = useState<ProfileTab>("my");
 
   useEffect(() => {
     const u = getStoredUser();
     setUser(u);
-    if (u) loadMyReviews(u);
-    else setLoading(false);
+    if (u) {
+      loadMyReviews(u);
+    } else {
+      setLoading(false);
+    }
   }, []);
+
+  // 좋아요 탭 전환 시 로드
+  useEffect(() => {
+    if (tab === "liked" && user && likedReviews.length === 0 && !likedLoading) {
+      loadLikedReviews(user);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, user]);
 
   async function loadMyReviews(u: KakaoUser) {
     setLoading(true);
@@ -29,6 +45,19 @@ export default function ProfileClient() {
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadLikedReviews(u: KakaoUser) {
+    setLikedLoading(true);
+    try {
+      const res = await fetch(`/api/profile/liked-reviews?kakao_user_id=${String(u.id)}`);
+      if (res.ok) {
+        const data: Review[] = await res.json();
+        setLikedReviews(data);
+      }
+    } finally {
+      setLikedLoading(false);
     }
   }
 
@@ -106,7 +135,7 @@ export default function ProfileClient() {
       </div>
 
       {/* 수익 업데이트 nudge */}
-      {updateableReviews.length > 0 && (
+      {updateableReviews.length > 0 && tab === "my" && (
         <div className="card p-5 mb-6 border-2 border-amber-200 bg-amber-50/40">
           <div className="flex items-start gap-3">
             <span className="text-2xl flex-shrink-0">📊</span>
@@ -147,10 +176,69 @@ export default function ProfileClient() {
         </div>
       )}
 
-      {/* 내 후기 목록 */}
-      <h2 className="font-bold text-slate-800 mb-4">✏️ 내가 쓴 후기</h2>
+      {/* 탭 */}
+      <div className="flex gap-1 mb-5 bg-slate-100 rounded-xl p-1">
+        <button
+          onClick={() => setTab("my")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+            tab === "my"
+              ? "bg-white text-indigo-600 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          ✏️ 내가 쓴 후기
+          {totalReviews > 0 && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${tab === "my" ? "bg-indigo-100 text-indigo-600" : "bg-slate-200 text-slate-500"}`}>
+              {totalReviews}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab("liked")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+            tab === "liked"
+              ? "bg-white text-rose-600 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          ❤️ 좋아요한 후기
+          {likedReviews.length > 0 && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${tab === "liked" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-500"}`}>
+              {likedReviews.length}
+            </span>
+          )}
+        </button>
+      </div>
 
-      {loading ? (
+      {/* 탭 콘텐츠 */}
+      {tab === "my" ? (
+        loading ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="card p-5 animate-pulse">
+                <div className="h-4 w-1/2 bg-slate-100 rounded mb-3" />
+                <div className="h-3 w-full bg-slate-50 rounded mb-2" />
+                <div className="h-3 w-2/3 bg-slate-50 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          <div className="card p-12 text-center">
+            <p className="text-4xl mb-3">📝</p>
+            <p className="text-slate-500 mb-2">아직 작성한 후기가 없어요.</p>
+            <p className="text-slate-400 text-sm mb-5">경험한 부업의 솔직한 후기를 남겨보세요!</p>
+            <Link href="/write" className="btn-primary inline-block">
+              첫 후기 쓰기 →
+            </Link>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {reviews.map((r) => (
+              <ReviewCard key={r.id} review={r} />
+            ))}
+          </div>
+        )
+      ) : likedLoading ? (
         <div className="space-y-3">
           {[1, 2].map((i) => (
             <div key={i} className="card p-5 animate-pulse">
@@ -160,18 +248,18 @@ export default function ProfileClient() {
             </div>
           ))}
         </div>
-      ) : reviews.length === 0 ? (
+      ) : likedReviews.length === 0 ? (
         <div className="card p-12 text-center">
-          <p className="text-4xl mb-3">📝</p>
-          <p className="text-slate-500 mb-2">아직 작성한 후기가 없어요.</p>
-          <p className="text-slate-400 text-sm mb-5">경험한 부업의 솔직한 후기를 남겨보세요!</p>
-          <Link href="/write" className="btn-primary inline-block">
-            첫 후기 쓰기 →
+          <p className="text-4xl mb-3">❤️</p>
+          <p className="text-slate-500 mb-2">좋아요한 후기가 없어요.</p>
+          <p className="text-slate-400 text-sm mb-5">마음에 드는 후기에 좋아요를 눌러보세요!</p>
+          <Link href="/" className="btn-primary inline-block">
+            후기 보러 가기 →
           </Link>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
-          {reviews.map((r) => (
+          {likedReviews.map((r) => (
             <ReviewCard key={r.id} review={r} />
           ))}
         </div>

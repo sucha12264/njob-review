@@ -130,8 +130,8 @@ export function middleware(request: NextRequest) {
 
       const isLocalDev = host.includes("localhost") || host.includes("127.0.0.1");
       const isOwnDomain =
-        origin.includes("njob-review.vercel.app") ||
-        referer.includes("njob-review.vercel.app") ||
+        origin.includes("side-job-checker.vercel.app") ||
+        referer.includes("side-job-checker.vercel.app") ||
         isLocalDev;
 
       if (!isOwnDomain) {

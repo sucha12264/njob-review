@@ -7,7 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import SearchTrigger from "@/components/SearchTrigger";
 import "./globals.css";
 
-const BASE_URL = "https://njob-review.vercel.app";
+const BASE_URL = "https://side-job-checker.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

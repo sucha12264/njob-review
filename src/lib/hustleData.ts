@@ -25,6 +25,8 @@ export interface SideHustle {
   officialUrl?: string;
   isHot?: boolean;
   isNew?: boolean;
+  /** 서비스 종료된 부업 (예: 카카오뷰) */
+  isTerminated?: boolean;
 }
 
 export const HUSTLE_CATEGORIES: HustleCategory[] = [
@@ -164,6 +166,7 @@ export const ALL_HUSTLES: SideHustle[] = [
     startupCost: "해당 없음",
     timeToFirst: "서비스 종료",
     difficulty: 1,
+    isTerminated: true,
   },
   {
     id: "brunch",

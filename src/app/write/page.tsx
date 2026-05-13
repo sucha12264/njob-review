@@ -160,8 +160,12 @@ function WritePageInner() {
   const [submitError, setSubmitError] = useState("");
   const [selectedHustle, setSelectedHustle] = useState<SideHustle | null>(null);
 
+  // 카카오 로그인 여부
+  const [isKakaoUser, setIsKakaoUser] = useState(false);
+
   // 핵심 필드
   const [nickname, setNickname] = useState("");
+  const [anonPassword, setAnonPassword] = useState("");
   const [incomeRange, setIncomeRange] = useState<IncomeRange | "">("");
   const [satisfaction, setSatisfaction] = useState(0);
   const [content, setContent] = useState("");
@@ -186,13 +190,16 @@ function WritePageInner() {
     }
   }, [searchParams]);
 
-  // 카카오 로그인 닉네임 자동 입력
+  // 카카오 로그인 닉네임 자동 입력 + 로그인 상태 체크
   useEffect(() => {
     const user = getStoredUser();
-    if (user?.nickname) setNickname(user.nickname);
+    if (user?.nickname) {
+      setNickname(user.nickname);
+      setIsKakaoUser(true);
+    }
   }, []);
 
-  const isValid = selectedHustle && nickname.trim() && incomeRange && satisfaction > 0 && content.trim().length >= 20;
+  const isValid = selectedHustle && nickname.trim().length >= 2 && incomeRange && satisfaction > 0 && content.trim().length >= 20;
 
   // 완성도 계산 (선택 항목 채울수록 올라감)
   const completeness = [
@@ -236,7 +243,7 @@ function WritePageInner() {
           if (json.url) proofImageUrl = json.url;
         } catch { /* 업로드 실패 무시 — 후기는 계속 제출 */ }
       }
-      const review = await addReview({
+      const payload = {
         nickname: nickname.trim(),
         hustle_id: selectedHustle.id,
         hustle_name: selectedHustle.name,
@@ -251,7 +258,20 @@ function WritePageInner() {
         recommend: satisfaction >= 4,
         proof_image_url: proofImageUrl,
         kakao_user_id: kakaoUser ? String(kakaoUser.id) : null,
-      } as ReviewInput & { kakao_user_id: string | null });
+        // 익명 작성 시 비밀번호 (선택, 4자 이상일 때만 전송)
+        anon_password: !kakaoUser && anonPassword.length >= 4 ? anonPassword : undefined,
+      };
+
+      const review = await addReview(payload as ReviewInput & { kakao_user_id: string | null; anon_password?: string });
+
+      // 익명+비밀번호 작성 시 로컬스토리지에 저장 (나중에 내 후기 삭제용)
+      if (!kakaoUser && anonPassword.length >= 4) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("njob_anon_reviews") ?? "[]") as Array<{ id: string; pw: string }>;
+          stored.push({ id: review.id, pw: anonPassword });
+          localStorage.setItem("njob_anon_reviews", JSON.stringify(stored.slice(-20))); // 최대 20개 보관
+        } catch { /* 무시 */ }
+      }
 
       router.push(`/review/${review.id}?new=1`);
     } catch (err) {
@@ -290,16 +310,76 @@ function WritePageInner() {
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">
               닉네임 <span className="text-red-400">*</span>
+              <span className="ml-2 text-xs font-normal text-slate-400">공개됩니다</span>
             </label>
-            <input
-              type="text"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="예: 직장인A, 퇴근후N잡러"
-              maxLength={20}
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
+            {isKakaoUser ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <span className="text-base">🟡</span>
+                <span className="text-sm font-semibold text-yellow-800">{nickname}</span>
+                <span className="ml-auto text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">카카오 로그인</span>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder="예: 직장인A, 퇴근후N잡러"
+                    maxLength={20}
+                    className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                      nickname.trim().length > 0 && nickname.trim().length < 2
+                        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                        : "border-slate-200 focus:border-indigo-400 focus:ring-indigo-100"
+                    }`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-300">
+                    {nickname.length}/20
+                  </span>
+                </div>
+                {nickname.trim().length > 0 && nickname.trim().length < 2 ? (
+                  <p className="text-xs text-red-400 mt-1">닉네임은 2자 이상 입력해주세요</p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-1">실명 없이 자유롭게 설정 가능해요 (최대 20자)</p>
+                )}
+              </>
+            )}
           </div>
+
+          {/* ② 익명 후기 비밀번호 (카카오 미로그인 시) */}
+          {!isKakaoUser && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-base mt-0.5">🔒</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">익명 작성 중</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    비밀번호를 설정하면 나중에 내 후기를 직접 삭제할 수 있어요.
+                    IP는 어뷰징 방지 목적으로만 저장되며 외부에 공개되지 않습니다.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  삭제용 비밀번호 <span className="text-slate-400 font-normal">(선택, 4자 이상)</span>
+                </label>
+                <input
+                  type="password"
+                  value={anonPassword}
+                  onChange={(e) => setAnonPassword(e.target.value)}
+                  placeholder="비밀번호 미설정 시 삭제 불가"
+                  maxLength={30}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white"
+                />
+                {anonPassword.length > 0 && anonPassword.length < 4 && (
+                  <p className="text-xs text-amber-500 mt-1">4자 이상 입력해주세요</p>
+                )}
+                {anonPassword.length >= 4 && (
+                  <p className="text-xs text-green-600 mt-1">✓ 비밀번호 설정됨 — 후기 삭제 가능</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ③ 월 수익 */}
           <div>

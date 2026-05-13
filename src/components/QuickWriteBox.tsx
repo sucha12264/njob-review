@@ -213,7 +213,7 @@ function QuickDoneBox({ hustle, reviewId }: { hustle: SideHustle; reviewId: stri
 
   const reviewUrl =
     reviewId && !reviewId.startsWith("local_")
-      ? `https://njob-review.vercel.app/review/${reviewId}`
+      ? `https://side-job-checker.vercel.app/review/${reviewId}`
       : typeof window !== "undefined"
       ? window.location.href
       : "";

@@ -44,7 +44,7 @@ export default function ShareButtons({ title, description }: Props) {
       content: {
         title,
         description: description ?? "",
-        imageUrl: "https://njob-review.vercel.app/opengraph-image",
+        imageUrl: "https://side-job-checker.vercel.app/opengraph-image",
         link: { mobileWebUrl: url, webUrl: url },
       },
       buttons: [{ title: "후기 보러가기", link: { mobileWebUrl: url, webUrl: url } }],

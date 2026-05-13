@@ -1,5 +1,5 @@
 /** 사이트 전역 상수 — 도메인 변경 시 여기만 수정 */
-export const BASE_URL = "https://njob-review.vercel.app";
+export const BASE_URL = "https://side-job-checker.vercel.app";
 
 /** 날짜 → "방금 / N분 전 / N시간 전 / N일 전 / N개월 전" */
 export function timeAgo(dateStr: string): string {

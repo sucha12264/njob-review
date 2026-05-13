@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase.server";
 import { HUSTLE_MAP } from "@/lib/hustleData";
 import ReviewDetailClient from "./ReviewDetailClient";
 
-const BASE_URL = "https://njob-review.vercel.app";
+const BASE_URL = "https://side-job-checker.vercel.app";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }

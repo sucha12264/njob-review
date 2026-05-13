@@ -244,8 +244,8 @@ export default function RankingClient({ initialData }: Props) {
           </div>
         ) : (
           <>
-            {/* 포디움 (TOP 3) */}
-            {top3.length === 3 && (
+            {/* 포디움 (TOP 3) — 후기가 3개 이상인 부업이 있을 때만 표시 */}
+            {top3.length === 3 ? (
               <div className="mb-10">
                 <h2 className="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">
                   🏆 TOP 3
@@ -258,7 +258,35 @@ export default function RankingClient({ initialData }: Props) {
                   })}
                 </div>
               </div>
-            )}
+            ) : sorted.length > 0 && sorted.length < 3 ? (
+              /* 후기 있는 부업 1~2개: 간소화된 TOP N 표시 */
+              <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50/40 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🏆</span>
+                  <p className="font-black text-slate-800">현재 랭킹 집계 중</p>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">
+                  후기가 3개 이상인 부업이 생기면 TOP 3 포디움이 표시됩니다.
+                  현재 후기가 있는 부업은 {sorted.length}개예요!
+                </p>
+                <div className="space-y-2">
+                  {sorted.map((item, i) => (
+                    <Link
+                      key={item.hustle_id}
+                      href={`/hustle/${item.hustle_id}`}
+                      className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-amber-100 hover:border-indigo-300 transition-colors group"
+                    >
+                      <span className="text-lg font-black text-amber-500">{MEDAL[i] ?? `${i+1}위`}</span>
+                      <span className="text-xl">{item.emoji}</span>
+                      <span className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors text-sm flex-1">
+                        {item.hustle_name}
+                      </span>
+                      <span className="text-xs text-indigo-600 font-bold">후기 {item.review_count}개</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {/* 요즘 떠오르는 부업 배너 */}
             <TrendingBanner />

@@ -8,23 +8,30 @@ const LIMIT = 20;
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category") ?? "";
+  const search = searchParams.get("search") ?? "";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-  const offset = (page - 1) * LIMIT;
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") ?? String(LIMIT))));
+  const offset = (page - 1) * limit;
 
   let query = supabaseAdmin
     .from("posts")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
-    .range(offset, offset + LIMIT - 1);
+    .range(offset, offset + limit - 1);
 
   if (category && category !== "전체") {
     query = query.eq("category", category);
   }
 
+  // 텍스트 검색: 제목 또는 내용에 키워드 포함 (부업명 연관 글 찾기용)
+  if (search) {
+    query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+  }
+
   const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ posts: data ?? [], total: count ?? 0, page, limit: LIMIT });
+  return NextResponse.json({ posts: data ?? [], total: count ?? 0, page, limit });
 }
 
 export async function POST(req: NextRequest) {

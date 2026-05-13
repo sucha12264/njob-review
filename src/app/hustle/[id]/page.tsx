@@ -5,7 +5,7 @@ import { HUSTLE_GUIDES } from "@/lib/hustleGuides";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import HustlePageClient from "./HustlePageClient";
 
-const BASE_URL = "https://njob-review.vercel.app";
+const BASE_URL = "https://side-job-checker.vercel.app";
 
 interface Props {
   params: Promise<{ id: string }>;
