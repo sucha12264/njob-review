@@ -129,9 +129,12 @@ export function middleware(request: NextRequest) {
       const host = request.headers.get("host") ?? "";
 
       const isLocalDev = host.includes("localhost") || host.includes("127.0.0.1");
+      // 브라우저는 same-origin GET에 Origin 헤더를 생략하므로, Origin 없고 host가 자체 도메인이면 허용
+      const isSameOriginRequest = !origin && host.includes("side-job-checker.vercel.app");
       const isOwnDomain =
         origin.includes("side-job-checker.vercel.app") ||
         referer.includes("side-job-checker.vercel.app") ||
+        isSameOriginRequest ||
         isLocalDev;
 
       if (!isOwnDomain) {

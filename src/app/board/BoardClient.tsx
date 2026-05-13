@@ -95,8 +95,11 @@ export default function BoardClient() {
         if (cat !== "전체") params.set("category", cat);
         const res = await fetch(`/api/posts?${params}`);
         const json = (await res.json()) as { posts: Post[]; total: number };
+        if (!res.ok || !Array.isArray(json.posts)) throw new Error("fetch failed");
         setPosts((prev) => (append ? [...prev, ...json.posts] : json.posts));
-        setTotal(json.total);
+        setTotal(json.total ?? 0);
+      } catch {
+        if (!append) setPosts([]);
       } finally {
         setLoading(false);
         setLoadingMore(false);
