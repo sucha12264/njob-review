@@ -241,7 +241,7 @@ export default function RecommendPage() {
 
           {/* 요즘 떠오르는 부업 — 피처드 섹션 */}
           {(() => {
-            const featured = ALL_ACTIVE.filter((h) => h.isHot && h.isNew).slice(0, 3);
+            const featured = ALL_ACTIVE.filter((h) => h.id === "n-telecom");
             if (featured.length === 0) return null;
             return (
               <section>
