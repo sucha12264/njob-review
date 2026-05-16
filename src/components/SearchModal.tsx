@@ -5,13 +5,6 @@ import { useRouter } from "next/navigation";
 import { ALL_HUSTLES, searchHustles } from "@/lib/hustleData";
 import { useStore } from "@/lib/store";
 
-const INCOME_COLORS: Record<string, string> = {
-  under_10: "text-slate-500",
-  "10_to_30": "text-blue-600",
-  "30_to_50": "text-green-600",
-  "50_to_100": "text-amber-600",
-  over_100: "text-purple-600",
-};
 
 const RECENT_KEY = "njob_recent_searches";
 const MAX_RECENT = 6;
@@ -213,7 +206,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-slate-400">{hustle.category}</span>
                         <span className="text-slate-200">·</span>
-                        <span className={`text-xs font-semibold ${INCOME_COLORS[hustle.incomeRange] ?? "text-slate-500"}`}>
+                        <span className="text-xs font-semibold text-slate-500">
                           {hustle.incomeRange}
                         </span>
                       </div>

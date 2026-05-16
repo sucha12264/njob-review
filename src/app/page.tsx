@@ -378,32 +378,36 @@ export default function Home() {
       {/* 탭 네비게이션 */}
       <div className="sticky top-0 z-30 bg-white border-b border-slate-100 shadow-sm">
         <div className="mx-auto max-w-6xl px-4">
-          <div className="flex">
-            {([
-              { id: "directory" as "directory" | "reviews", label: "📋 부업 탐색", badge: ALL_HUSTLES.length },
-              { id: "reviews" as "directory" | "reviews", label: "💬 후기 피드", badge: reviews.length },
-            ]).map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-5 py-4 text-sm font-bold border-b-2 transition-all ${
-                  activeTab === tab.id
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                {tab.label}
-                <span
-                  className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+          <div className="flex items-center">
+            <div role="tablist" aria-label="콘텐츠 탭" className="flex">
+              {([
+                { id: "directory" as "directory" | "reviews", label: "📋 부업 탐색", badge: ALL_HUSTLES.length },
+                { id: "reviews" as "directory" | "reviews", label: "💬 후기 피드", badge: reviews.length },
+              ]).map((tab) => (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-5 py-4 text-sm font-bold border-b-2 transition-all ${
                     activeTab === tab.id
-                      ? "bg-indigo-100 text-indigo-600"
-                      : "bg-slate-100 text-slate-400"
+                      ? "border-indigo-600 text-indigo-600"
+                      : "border-transparent text-slate-400 hover:text-slate-600"
                   }`}
                 >
-                  {tab.badge}
-                </span>
-              </button>
-            ))}
+                  {tab.label}
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                      activeTab === tab.id
+                        ? "bg-indigo-100 text-indigo-600"
+                        : "bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                </button>
+              ))}
+            </div>
             <div className="ml-auto flex items-center pr-1">
               <Link href="/write" className="btn-primary text-xs py-2 px-4">
                 + 후기 쓰기

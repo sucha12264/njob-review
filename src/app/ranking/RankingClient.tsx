@@ -305,8 +305,9 @@ export default function RankingClient({ initialData }: Props) {
                     { label: "추천률",      key: "recommend_rate"   },
                     { label: "고수익 비율", key: "top_income_rate"  },
                   ].map((col) => (
-                    <div
+                    <button
                       key={col.key}
+                      type="button"
                       className={`w-16 text-center cursor-pointer hover:text-indigo-600 transition-colors ${
                         sortKey === col.key ? "text-indigo-600 font-bold" : ""
                       }`}
@@ -314,7 +315,7 @@ export default function RankingClient({ initialData }: Props) {
                     >
                       {col.label}
                       {sortKey === col.key && " ▼"}
-                    </div>
+                    </button>
                   ))}
                 </div>
                 <div className="w-4" />
