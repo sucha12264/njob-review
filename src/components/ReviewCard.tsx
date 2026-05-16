@@ -97,13 +97,15 @@ export default function ReviewCard({ review, hideHustleTag }: { review: Review; 
         <span className="text-xs text-slate-400">✍️ {review.nickname}</span>
         <button
           onClick={() => toggleLike(review.id)}
+          aria-label={isLiked ? `좋아요 취소 (현재 ${review.likes}개)` : `좋아요 (현재 ${review.likes}개)`}
+          aria-pressed={isLiked}
           className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
             isLiked
               ? "bg-red-50 border-red-200 text-red-500 font-semibold"
               : "bg-white border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-400"
           }`}
         >
-          <span>{isLiked ? "❤️" : "🤍"}</span>
+          <span aria-hidden="true">{isLiked ? "❤️" : "🤍"}</span>
           <span>{review.likes}</span>
         </button>
       </div>

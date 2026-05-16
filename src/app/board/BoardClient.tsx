@@ -113,10 +113,6 @@ export default function BoardClient() {
     fetchPosts(tab, 1, false);
   }, [tab, fetchPosts]);
 
-  function handleTabChange(next: Tab) {
-    setTab(next);
-  }
-
   function loadMore() {
     const next = page + 1;
     setPage(next);
@@ -145,11 +141,17 @@ export default function BoardClient() {
       </div>
 
       {/* 카테고리 탭 */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-5 scrollbar-hide -mx-4 px-4">
+      <div
+        role="tablist"
+        aria-label="게시판 카테고리"
+        className="flex gap-2 overflow-x-auto pb-1 mb-5 scrollbar-hide -mx-4 px-4"
+      >
         {ALL_TABS.map((t) => (
           <button
             key={t}
-            onClick={() => handleTabChange(t as Tab)}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t as Tab)}
             className={`whitespace-nowrap text-sm font-semibold px-4 py-2 rounded-full transition-all flex-shrink-0 ${
               tab === t
                 ? "bg-indigo-600 text-white shadow-sm"

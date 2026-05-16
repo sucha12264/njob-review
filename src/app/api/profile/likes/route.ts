@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
+import { rateLimit } from "@/lib/rateLimit";
 
 // GET /api/profile/likes?kakao_user_id=xxx
 // 카카오 로그인 유저의 좋아요한 review_id 목록 반환
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`profile-likes:${ip}`, 30, 60_000);
+  if (!allowed) return NextResponse.json([], { status: 429 });
+
   const kakaoUserId = req.nextUrl.searchParams.get("kakao_user_id");
   if (!kakaoUserId) {
     return NextResponse.json([], { status: 200 });

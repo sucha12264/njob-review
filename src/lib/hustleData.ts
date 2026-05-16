@@ -23,6 +23,8 @@ export interface SideHustle {
   timeToFirst: string;
   difficulty: 1 | 2 | 3 | 4 | 5;
   officialUrl?: string;
+  /** 쿠팡파트너스 등 제휴 링크 (있으면 officialUrl 대신 사용, 커미션 발생) */
+  affiliateUrl?: string;
   isHot?: boolean;
   isNew?: boolean;
   /** 서비스 종료된 부업 (예: 카카오뷰) */
@@ -225,6 +227,7 @@ export const ALL_HUSTLES: SideHustle[] = [
     timeToFirst: "즉시",
     difficulty: 1,
     officialUrl: "https://partners.coupang.com",
+    affiliateUrl: "https://link.coupang.com/a/dLQuJQmuCi",
     isHot: true,
   },
   {
@@ -435,6 +438,7 @@ export const ALL_HUSTLES: SideHustle[] = [
     timeToFirst: "2~4주",
     difficulty: 3,
     officialUrl: "https://wing.coupang.com",
+    affiliateUrl: "https://link.coupang.com/a/dLQuJQmuCi",
   },
   {
     id: "ably-seller",
@@ -717,6 +721,7 @@ export const ALL_HUSTLES: SideHustle[] = [
     timeToFirst: "즉시",
     difficulty: 2,
     officialUrl: "https://flex.coupang.com",
+    affiliateUrl: "https://link.coupang.com/a/dLQuJQmuCi",
   },
   {
     id: "kakao-driver",

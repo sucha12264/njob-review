@@ -36,7 +36,7 @@ function PostComments({ postId }: { postId: string }) {
   const loadComments = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/post-comments?post_id=${postId}`);
+      const res = await fetch(`/api/post-comments?post_id=${encodeURIComponent(postId)}`);
       if (res.ok) setComments(await res.json());
     } finally {
       setLoading(false);

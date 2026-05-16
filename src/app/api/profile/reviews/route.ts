@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
+import { rateLimit } from "@/lib/rateLimit";
 
 // GET /api/profile/reviews?kakao_user_id=xxx
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`profile-reviews:${ip}`, 30, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   const kakaoUserId = req.nextUrl.searchParams.get("kakao_user_id");
   if (!kakaoUserId) {
     return NextResponse.json({ error: "kakao_user_id 필요" }, { status: 400 });

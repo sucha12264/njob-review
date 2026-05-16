@@ -43,6 +43,14 @@ function ReportButton({ type, targetId }: { type: "review" | "comment"; targetId
 
   const REASONS = ["스팸/홍보", "허위 정보", "욕설/비방", "개인정보 노출", "기타"];
 
+  // Escape 키로 모달 닫기
+  useEffect(() => {
+    if (!showModal) return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setShowModal(false); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showModal]);
+
   async function handleReport() {
     if (!reason) return;
     setSubmitting(true);

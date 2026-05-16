@@ -229,6 +229,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   위반 시 저작권법에 따라 법적 조치를 취할 수 있습니다. ·{" "}
                   <Link href="/terms" className="underline hover:text-slate-400 transition-colors">이용약관</Link>
                 </p>
+                <p className="text-slate-700">
+                  이 사이트의 일부 링크는 쿠팡 파트너스 활동의 일환으로, 클릭·구매 시 수수료를 제공받을 수 있습니다.
+                </p>
               </div>
             </div>
           </footer>

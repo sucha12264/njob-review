@@ -112,6 +112,25 @@ function buildSchema(ranked: RankedHustle[]) {
 export default async function RankingPage() {
   const ranked = await fetchRanking();
 
+  // Supabase 연결 실패 등으로 데이터가 없을 때 안내
+  if (ranked.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <p className="text-5xl mb-4">📊</p>
+        <h1 className="text-xl font-black text-slate-800 mb-2">랭킹 데이터를 불러올 수 없어요</h1>
+        <p className="text-slate-400 text-sm mb-6">
+          후기가 아직 없거나 일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.
+        </p>
+        <a
+          href="/ranking"
+          className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-6 py-3 rounded-xl transition-colors"
+        >
+          새로고침
+        </a>
+      </div>
+    );
+  }
+
   return (
     <>
       <script

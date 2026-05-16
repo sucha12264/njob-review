@@ -38,7 +38,7 @@ export default function ProfileClient() {
   async function loadMyReviews(u: KakaoUser) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/profile/reviews?kakao_user_id=${String(u.id)}`);
+      const res = await fetch(`/api/profile/reviews?kakao_user_id=${encodeURIComponent(String(u.id))}`);
       if (res.ok) {
         const data: Review[] = await res.json();
         setReviews(data);
@@ -51,7 +51,7 @@ export default function ProfileClient() {
   async function loadLikedReviews(u: KakaoUser) {
     setLikedLoading(true);
     try {
-      const res = await fetch(`/api/profile/liked-reviews?kakao_user_id=${String(u.id)}`);
+      const res = await fetch(`/api/profile/liked-reviews?kakao_user_id=${encodeURIComponent(String(u.id))}`);
       if (res.ok) {
         const data: Review[] = await res.json();
         setLikedReviews(data);

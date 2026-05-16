@@ -6,9 +6,9 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
-import { MOCK_REVIEWS } from "./mockData";
 import { getStoredUser } from "./kakaoAuth";
 import { ALL_HUSTLES } from "./hustleData";
 import type { Review, ReviewInput, IncomeRange } from "./types";
@@ -30,6 +30,7 @@ interface StoreState {
   sortBy: "latest" | "likes" | "income" | "satisfaction";
   searchQuery: string;
   loading: boolean;
+  fetchError: boolean;
   activeTab: "directory" | "reviews";
   activeFilterCount: number;
   setActiveTab: (tab: "directory" | "reviews") => void;
@@ -65,6 +66,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sortBy, setSortBy] = useState<"latest" | "likes" | "income" | "satisfaction">("latest");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [activeTab, setActiveTabState] = useState<"directory" | "reviews">("directory");
   const setActiveTab = useCallback((tab: "directory" | "reviews") => setActiveTabState(tab), []);
 
@@ -75,9 +77,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const res = await fetch("/api/reviews");
         if (!res.ok) throw new Error("fetch failed");
         const data: Review[] = await res.json();
-        setReviews(data.length > 0 ? data : MOCK_REVIEWS);
+        setReviews(Array.isArray(data) ? data : []);
+        setFetchError(false);
       } catch {
-        setReviews(MOCK_REVIEWS);
+        setReviews([]);
+        setFetchError(true);
       } finally {
         setLoading(false);
       }
@@ -99,7 +103,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const kakaoUser = getStoredUser();
     if (!kakaoUser) return;
     try {
-      const res = await fetch(`/api/profile/likes?kakao_user_id=${String(kakaoUser.id)}`);
+      const res = await fetch(`/api/profile/likes?kakao_user_id=${encodeURIComponent(String(kakaoUser.id))}`);
       if (!res.ok) return;
       const dbIds: string[] = await res.json();
       if (dbIds.length > 0) {
@@ -224,48 +228,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [reviews]
   );
 
-  const q = searchQuery.trim().toLowerCase();
   const activeFilterCount =
     (filterReviewCategory !== "all" ? 1 : 0) +
     (filterIncome ? 1 : 0) +
     (filterDifficulty ? 1 : 0) +
     (filterSatisfaction ? 1 : 0);
 
-  const filteredReviews = reviews
-    .filter((r) => {
-      if (filterHustleId !== "all") return r.hustle_id === filterHustleId;
-      return true;
-    })
-    .filter((r) => {
-      if (filterReviewCategory === "all") return true;
-      const hustle = ALL_HUSTLES.find((h) => h.id === r.hustle_id);
-      return hustle?.category === filterReviewCategory;
-    })
-    .filter((r) => !filterIncome || r.income_range === filterIncome)
-    .filter((r) => {
-      if (!filterDifficulty) return true;
-      if (filterDifficulty === 4) return r.difficulty >= 4;
-      return r.difficulty <= filterDifficulty;
-    })
-    .filter((r) => !filterSatisfaction || r.satisfaction >= filterSatisfaction)
-    .filter((r) => {
-      if (q === "") return true;
-      return (
-        r.title.toLowerCase().includes(q) ||
-        r.content.toLowerCase().includes(q) ||
-        r.nickname.toLowerCase().includes(q) ||
-        r.hustle_name.toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => {
-      if (sortBy === "latest")
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      if (sortBy === "likes") return b.likes - a.likes;
-      if (sortBy === "income")
-        return INCOME_ORDER.indexOf(b.income_range) - INCOME_ORDER.indexOf(a.income_range);
-      if (sortBy === "satisfaction") return b.satisfaction - a.satisfaction;
-      return 0;
-    });
+  const filteredReviews = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return reviews
+      .filter((r) => {
+        if (filterHustleId !== "all") return r.hustle_id === filterHustleId;
+        return true;
+      })
+      .filter((r) => {
+        if (filterReviewCategory === "all") return true;
+        const hustle = ALL_HUSTLES.find((h) => h.id === r.hustle_id);
+        return hustle?.category === filterReviewCategory;
+      })
+      .filter((r) => !filterIncome || r.income_range === filterIncome)
+      .filter((r) => {
+        if (!filterDifficulty) return true;
+        if (filterDifficulty === 4) return r.difficulty >= 4;
+        return r.difficulty <= filterDifficulty;
+      })
+      .filter((r) => !filterSatisfaction || r.satisfaction >= filterSatisfaction)
+      .filter((r) => {
+        if (q === "") return true;
+        return (
+          r.title.toLowerCase().includes(q) ||
+          r.content.toLowerCase().includes(q) ||
+          r.nickname.toLowerCase().includes(q) ||
+          r.hustle_name.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        if (sortBy === "latest")
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (sortBy === "likes") return b.likes - a.likes;
+        if (sortBy === "income")
+          return INCOME_ORDER.indexOf(b.income_range) - INCOME_ORDER.indexOf(a.income_range);
+        if (sortBy === "satisfaction") return b.satisfaction - a.satisfaction;
+        return 0;
+      });
+  }, [reviews, filterHustleId, filterReviewCategory, filterIncome, filterDifficulty, filterSatisfaction, searchQuery, sortBy]);
 
   return (
     <StoreContext.Provider
@@ -281,6 +287,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         sortBy,
         searchQuery,
         loading,
+        fetchError,
         activeTab,
         activeFilterCount,
         setActiveTab,
@@ -301,6 +308,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {/* 후기 데이터 로드 실패 시 전역 토스트 */}
+      {fetchError && !loading && (
+        <div
+          role="alert"
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 bg-slate-800 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg"
+        >
+          <span>⚠️</span>
+          <span>후기 데이터를 불러오지 못했어요.</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="ml-1 underline underline-offset-2 text-indigo-300 hover:text-white transition-colors"
+          >
+            새로고침
+          </button>
+        </div>
+      )}
     </StoreContext.Provider>
   );
 }

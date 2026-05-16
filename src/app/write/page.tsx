@@ -18,15 +18,22 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
   const active = hover || value;
   return (
     <div className="flex items-center gap-3">
-      <div className="flex gap-1">
+      <div role="radiogroup" aria-label="만족도 별점" className="flex gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
+            role="radio"
+            aria-checked={n === value}
+            aria-label={`${n}점 — ${STAR_LABELS[n - 1]}`}
             onClick={() => onChange(n)}
             onMouseEnter={() => setHover(n)}
             onMouseLeave={() => setHover(0)}
-            className={`text-3xl transition-transform hover:scale-110 ${n <= active ? "text-amber-400" : "text-slate-200"}`}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); onChange(Math.min(5, value + 1)); }
+              if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); onChange(Math.max(1, value > 0 ? value - 1 : 1)); }
+            }}
+            className={`text-3xl transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 rounded ${n <= active ? "text-amber-400" : "text-slate-200"}`}
           >
             ★
           </button>
@@ -210,6 +217,12 @@ function WritePageInner() {
     weeklyHours !== 5,
     !!proofImage,
   ].filter(Boolean).length;
+
+  // Object URL 메모리 누수 방지 — proofPreview 변경/언마운트 시 해제
+  useEffect(() => {
+    const url = proofPreview;
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [proofPreview]);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

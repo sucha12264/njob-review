@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ALL_HUSTLES, type SideHustle } from "@/lib/hustleData";
 import { type HustleGuide } from "@/lib/hustleGuides";
+import { HUSTLE_PRODUCTS } from "@/lib/affiliateProducts";
 import { useStore } from "@/lib/store";
 import ReviewCard from "@/components/ReviewCard";
 import ShareButtons from "@/components/ShareButtons";
@@ -69,7 +70,7 @@ export default function HustlePageClient({ hustle, guide }: Props) {
           </div>
 
           <div className="flex items-start gap-5">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-4xl flex-shrink-0">
+            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-4xl flex-shrink-0" aria-hidden="true">
               {hustle.emoji}
             </div>
             <div>
@@ -120,16 +121,23 @@ export default function HustlePageClient({ hustle, guide }: Props) {
             <div className="card p-5">
               <h2 className="font-bold text-slate-800 mb-3">📌 이 부업이란?</h2>
               <p className="text-slate-600 leading-relaxed">{hustle.description}</p>
-              {hustle.officialUrl && (
-                <a
-                  href={hustle.officialUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackClick(hustle.id, hustle.name)}
-                  className="inline-flex items-center gap-1.5 mt-4 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  🔗 공식 사이트 바로가기 →
-                </a>
+              {(hustle.affiliateUrl ?? hustle.officialUrl) && (
+                <div className="mt-4">
+                  <a
+                    href={hustle.affiliateUrl ?? hustle.officialUrl}
+                    target="_blank"
+                    rel="noopener noreferrer sponsored"
+                    onClick={() => trackClick(hustle.id, hustle.name)}
+                    className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                  >
+                    🔗 공식 사이트 바로가기 →
+                  </a>
+                  {hustle.affiliateUrl && (
+                    <p className="text-[11px] text-slate-300 mt-1">
+                      이 링크는 쿠팡 파트너스 활동의 일환으로, 수수료를 제공받을 수 있습니다.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -315,6 +323,37 @@ export default function HustlePageClient({ hustle, guide }: Props) {
                 <QuickWriteBox hustle={hustle} existingCount={allReviews.length} />
               )}
             </div>
+
+            {/* 관련 용품 (쿠팡파트너스) */}
+            {HUSTLE_PRODUCTS[id] && (
+              <div className="card p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-bold text-slate-800 text-sm">🛒 이 부업에 필요한 용품</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {HUSTLE_PRODUCTS[id].map((product) => (
+                    <a
+                      key={product.link}
+                      href={product.link}
+                      target="_blank"
+                      rel="noopener noreferrer sponsored"
+                      className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/50 transition-all group"
+                    >
+                      <span className="text-xl flex-shrink-0">{product.emoji}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-700 group-hover:text-orange-600 transition-colors truncate">
+                          {product.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">쿠팡에서 보기 →</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-300 mt-2">
+                  이 링크는 쿠팡 파트너스 활동의 일환으로, 수수료를 제공받을 수 있습니다.
+                </p>
+              </div>
+            )}
 
             {/* Q&A */}
             <HustleQnA hustleId={id} hustleName={hustle.name} />

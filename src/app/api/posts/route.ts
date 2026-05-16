@@ -5,10 +5,22 @@ import { rateLimit } from "@/lib/rateLimit";
 const VALID_CATEGORIES = ["자유수다", "수익인증", "질문해요", "정보공유", "N잡시작"];
 const LIMIT = 20;
 
+// ILIKE 패턴에서 특수문자 이스케이프 (%, _, \)
+function escapeLike(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 export async function GET(req: NextRequest) {
+  // GET도 rate limit: IP당 1분 60회
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`posts-get:${ip}`, 60, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category") ?? "";
-  const search = searchParams.get("search") ?? "";
+  const rawSearch = searchParams.get("search") ?? "";
+  // 검색어 길이 제한 + 특수문자 이스케이프 (SQL 인젝션 방지)
+  const search = escapeLike(rawSearch.slice(0, 100));
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") ?? String(LIMIT))));
   const offset = (page - 1) * limit;
