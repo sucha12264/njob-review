@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store";
 import { getStoredUser } from "@/lib/kakaoAuth";
 import { INCOME_LABELS, type IncomeRange, type ReviewInput } from "@/lib/types";
 import type { SideHustle } from "@/lib/hustleData";
+import { BASE_URL } from "@/lib/constants";
 
 const INCOME_RANGES = Object.keys(INCOME_LABELS) as IncomeRange[];
 const STAR_LABELS = ["별로예요", "그저 그래요", "보통이에요", "만족해요", "최고예요"];
@@ -213,7 +214,7 @@ function QuickDoneBox({ hustle, reviewId }: { hustle: SideHustle; reviewId: stri
 
   const reviewUrl =
     reviewId && !reviewId.startsWith("local_")
-      ? `https://side-job-checker.vercel.app/review/${reviewId}`
+      ? `${BASE_URL}/review/${reviewId}`
       : typeof window !== "undefined"
       ? window.location.href
       : "";

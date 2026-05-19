@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Post } from "@/lib/types";
 import PostDetailClient from "./PostDetailClient";
-
-const BASE_URL = "https://side-job-checker.vercel.app";
+import { BASE_URL } from "@/lib/constants";
 
 export async function generateMetadata({
   params,

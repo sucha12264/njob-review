@@ -10,6 +10,7 @@ import { getStoredUser, initKakao } from "@/lib/kakaoAuth";
 import ShareButtons from "@/components/ShareButtons";
 import Comments from "@/components/Comments";
 import ReviewUpdateTimeline from "@/components/ReviewUpdateTimeline";
+import { BASE_URL } from "@/lib/constants";
 
 function Stars({ value }: { value: number }) {
   return (
@@ -165,7 +166,7 @@ function NewReviewShareBannerInner({ review }: { review: Review }) {
         content: {
           title: shareTitle,
           description: shareDesc,
-          imageUrl: "https://side-job-checker.vercel.app/opengraph-image",
+          imageUrl: `${BASE_URL}/opengraph-image`,
           link: { mobileWebUrl: reviewUrl, webUrl: reviewUrl },
         },
         buttons: [{ title: "후기 보러가기", link: { mobileWebUrl: reviewUrl, webUrl: reviewUrl } }],

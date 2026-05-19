@@ -11,8 +11,7 @@ import {
 import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Review } from "@/lib/types";
 import { INCOME_LABELS } from "@/lib/types";
-
-const BASE_URL = "https://side-job-checker.vercel.app";
+import { BASE_URL } from "@/lib/constants";
 
 interface Props {
   params: Promise<{ slug: string }>;

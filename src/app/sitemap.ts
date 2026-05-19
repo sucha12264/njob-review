@@ -1,8 +1,7 @@
 import { MetadataRoute } from "next";
 import { ALL_HUSTLES, CATEGORY_SLUG } from "@/lib/hustleData";
 import { createClient } from "@supabase/supabase-js";
-
-const BASE_URL = "https://side-job-checker.vercel.app";
+import { BASE_URL } from "@/lib/constants";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const hustleUrls = ALL_HUSTLES.map((h) => ({

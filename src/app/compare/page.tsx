@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import CompareClient from "./CompareClient";
 import { HUSTLE_MAP } from "@/lib/hustleData";
-
-const BASE_URL = "https://side-job-checker.vercel.app";
+import { BASE_URL } from "@/lib/constants";
 
 interface Props {
   searchParams: Promise<{ a?: string; b?: string }>;

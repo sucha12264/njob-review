@@ -13,6 +13,7 @@ Node Version   : 20.x (@types/node ^20)
 Test Runner    : [미입력] — 테스트 없음 (수동 검증)
 Lint/Format    : ESLint (eslint-config-next 15.3.1) — Prettier 미설정
 Deploy Target  : Vercel (Production: https://njob-review.vercel.app)
+Base URL       : 도메인 변경 시 src/lib/constants.ts 의 BASE_URL 하나만 수정
 Env File       : .env.local (never commit)
 ```
 
@@ -71,7 +72,6 @@ src/
 ├── components/
 │   ├── BottomNav.tsx             # 모바일 하단 네비 (5탭)
 │   ├── Comments.tsx              # 후기 댓글 섹션
-│   ├── FilterBar.tsx             # 카테고리/정렬 필터
 │   ├── KakaoAuthButton.tsx       # 카카오 로그인 버튼
 │   ├── QuickWriteBox.tsx         # 부업 페이지 인라인 후기 작성
 │   ├── ReviewCard.tsx            # 후기 카드 컴포넌트
@@ -82,10 +82,10 @@ src/
 │   ├── supabase.ts               # 클라이언트 Supabase (NEXT_PUBLIC_ 키)
 │   ├── supabase.server.ts        # 서버 전용 (Service Role — 절대 client import 금지)
 │   ├── adminAuth.ts              # x-admin-password 헤더 검증
+│   ├── constants.ts              # BASE_URL 등 전역 상수 (도메인 변경 시 여기만 수정)
 │   ├── hustleData.ts             # HUSTLE_MAP (부업 메타데이터 정적 데이터)
 │   ├── hustleGuides.ts           # HUSTLE_GUIDES (시작 가이드, pros/cons)
 │   ├── kakaoAuth.ts              # 카카오 SDK 초기화, 유저 스토리지
-│   ├── mockData.ts               # 로컬 개발용 목 데이터
 │   └── rateLimit.ts              # 간단한 API 레이트 리밋
 ├── middleware.ts                  # 허니팟 리다이렉트
 scripts/
@@ -237,7 +237,7 @@ ValidationError → 필드별 구체적 피드백
 
 ### 알려진 기술 부채
 - 테스트 코드 전무 — E2E나 단위 테스트 도입 필요
-- `src/lib/mockData.ts`가 여전히 존재 — 정리 필요
+- `src/lib/mockData.ts` — 삭제 완료
 - PowerShell에서 한글 git commit 메시지 인코딩 오류 → **영문 커밋 메시지** 사용
 - Sentry 등 에러 트래킹 미연동
 

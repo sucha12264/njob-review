@@ -4,8 +4,7 @@ import { HUSTLE_MAP } from "@/lib/hustleData";
 import { HUSTLE_GUIDES } from "@/lib/hustleGuides";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import HustlePageClient from "./HustlePageClient";
-
-const BASE_URL = "https://side-job-checker.vercel.app";
+import { BASE_URL } from "@/lib/constants";
 
 interface Props {
   params: Promise<{ id: string }>;

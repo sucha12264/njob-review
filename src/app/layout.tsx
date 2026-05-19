@@ -6,8 +6,7 @@ import KakaoAuthButton from "@/components/KakaoAuthButton";
 import BottomNav from "@/components/BottomNav";
 import SearchTrigger from "@/components/SearchTrigger";
 import "./globals.css";
-
-const BASE_URL = "https://side-job-checker.vercel.app";
+import { BASE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

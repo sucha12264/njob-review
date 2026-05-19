@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { initKakao } from "@/lib/kakaoAuth";
+import { BASE_URL } from "@/lib/constants";
 
 interface Props {
   title: string;
@@ -44,7 +45,7 @@ export default function ShareButtons({ title, description }: Props) {
       content: {
         title,
         description: description ?? "",
-        imageUrl: "https://side-job-checker.vercel.app/opengraph-image",
+        imageUrl: `${BASE_URL}/opengraph-image`,
         link: { mobileWebUrl: url, webUrl: url },
       },
       buttons: [{ title: "후기 보러가기", link: { mobileWebUrl: url, webUrl: url } }],
