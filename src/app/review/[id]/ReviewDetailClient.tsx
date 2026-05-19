@@ -10,7 +10,10 @@ import { getStoredUser, initKakao } from "@/lib/kakaoAuth";
 import ShareButtons from "@/components/ShareButtons";
 import Comments from "@/components/Comments";
 import ReviewUpdateTimeline from "@/components/ReviewUpdateTimeline";
+import ReviewCard from "@/components/ReviewCard";
 import { BASE_URL } from "@/lib/constants";
+import { ALL_HUSTLES, HUSTLE_MAP } from "@/lib/hustleData";
+import { COMPARE_PAIRS } from "@/lib/comparePairs";
 
 function Stars({ value }: { value: number }) {
   return (
@@ -269,7 +272,22 @@ function NewReviewShareBanner({ review }: { review: Review }) {
 
 export default function ReviewDetailClient({ review }: { review: Review }) {
   const router = useRouter();
-  const { toggleLike, likedIds } = useStore();
+  const { toggleLike, likedIds, getReviewsByHustle } = useStore();
+
+  // 같은 부업의 다른 후기 (현재 후기 제외, 최대 3개)
+  const sameHustleReviews = getReviewsByHustle(review.hustle_id)
+    .filter((r) => r.id !== review.id)
+    .sort((a, b) => b.likes - a.likes)
+    .slice(0, 3);
+
+  // 같은 카테고리 비슷한 부업 (비교 페이지 링크용)
+  const hustle = HUSTLE_MAP[review.hustle_id];
+  const relatedHustles = hustle
+    ? ALL_HUSTLES.filter((h) => h.category === hustle.category && h.id !== review.hustle_id && !h.isTerminated).slice(0, 3)
+    : [];
+
+  // 이 부업이 포함된 비교 조합 찾기
+  const comparePair = COMPARE_PAIRS.find((p) => p.a === review.hustle_id || p.b === review.hustle_id);
   const isLiked = likedIds.has(review.id);
   const [isOwner, setIsOwner] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -429,6 +447,99 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
       <div className="card p-5 sm:p-8 mt-4">
         <Comments reviewId={review.id} />
       </div>
+
+      {/* 가이드 & 비교 링크 */}
+      <div className="grid sm:grid-cols-2 gap-3 mt-4">
+        <Link
+          href={`/hustle/${review.hustle_id}/guide`}
+          className="card p-4 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all group"
+        >
+          <span className="text-2xl flex-shrink-0">📖</span>
+          <div className="min-w-0">
+            <p className="font-bold text-slate-800 text-sm group-hover:text-indigo-600 transition-colors">
+              {review.hustle_name} 시작 가이드
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">단계별 방법 · 꿀팁 · 플랫폼 정리</p>
+          </div>
+          <span className="ml-auto text-slate-300 group-hover:text-indigo-400 transition-colors flex-shrink-0">→</span>
+        </Link>
+
+        {comparePair ? (
+          <Link
+            href={`/compare/${comparePair.a}-vs-${comparePair.b}`}
+            className="card p-4 flex items-center gap-3 hover:border-violet-200 hover:bg-violet-50/30 transition-all group"
+          >
+            <span className="text-2xl flex-shrink-0">⚖️</span>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-800 text-sm group-hover:text-violet-600 transition-colors">
+                {review.hustle_name} 비교해보기
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">다른 부업과 수익·난이도 비교</p>
+            </div>
+            <span className="ml-auto text-slate-300 group-hover:text-violet-400 transition-colors flex-shrink-0">→</span>
+          </Link>
+        ) : (
+          <Link
+            href="/compare"
+            className="card p-4 flex items-center gap-3 hover:border-violet-200 hover:bg-violet-50/30 transition-all group"
+          >
+            <span className="text-2xl flex-shrink-0">⚖️</span>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-800 text-sm group-hover:text-violet-600 transition-colors">
+                부업 비교하기
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">62개 부업 수익·난이도 비교</p>
+            </div>
+            <span className="ml-auto text-slate-300 group-hover:text-violet-400 transition-colors flex-shrink-0">→</span>
+          </Link>
+        )}
+      </div>
+
+      {/* 같은 부업의 다른 후기 */}
+      {sameHustleReviews.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-slate-800 text-base">
+              {review.hustle_name} 다른 후기
+            </h2>
+            <Link
+              href={`/hustle/${review.hustle_id}`}
+              className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+            >
+              전체 보기 →
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {sameHustleReviews.map((r) => (
+              <ReviewCard key={r.id} review={r} hideHustleTag />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 같은 카테고리 부업 */}
+      {relatedHustles.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-bold text-slate-800 text-base mb-3">비슷한 부업도 살펴보세요</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {relatedHustles.map((h) => (
+              <Link
+                key={h.id}
+                href={`/hustle/${h.id}`}
+                className="card p-4 flex items-center gap-3 hover:border-indigo-200 transition-all group"
+              >
+                <span className="text-2xl flex-shrink-0">{h.emoji}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm group-hover:text-indigo-600 transition-colors truncate">
+                    {h.name}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">{h.incomeRange}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 모바일 하단 여백 (bottom nav) */}
       <div className="h-4 sm:h-0" />

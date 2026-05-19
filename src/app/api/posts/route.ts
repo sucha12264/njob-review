@@ -41,7 +41,10 @@ export async function GET(req: NextRequest) {
   }
 
   const { data, count, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("posts GET 에러:", error.message);
+    return NextResponse.json({ error: "게시글을 불러오지 못했어요" }, { status: 500 });
+  }
 
   return NextResponse.json({ posts: data ?? [], total: count ?? 0, page, limit });
 }
@@ -79,6 +82,9 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("posts POST 에러:", error.message);
+    return NextResponse.json({ error: "게시글 등록에 실패했어요" }, { status: 500 });
+  }
   return NextResponse.json(data, { status: 201 });
 }

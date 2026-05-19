@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { getAuthUserId } from "@/lib/serverAuth";
+import { rateLimit } from "@/lib/rateLimit";
 import { INCOME_LABELS, UPDATE_MONTHS } from "@/lib/types";
 import type { IncomeRange, UpdateMonths } from "@/lib/types";
 
@@ -9,6 +10,10 @@ const VALID_INCOME = Object.keys(INCOME_LABELS) as IncomeRange[];
 
 /** GET /api/review-updates?review_id=xxx */
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`review-updates-get:${ip}`, 60, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   const review_id = new URL(req.url).searchParams.get("review_id");
   if (!review_id) return NextResponse.json({ error: "review_id 필요" }, { status: 400 });
 
@@ -18,12 +23,19 @@ export async function GET(req: NextRequest) {
     .eq("review_id", review_id)
     .order("months_elapsed", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("review-updates GET 에러:", error.message);
+    return NextResponse.json({ error: "업데이트 내역을 불러오지 못했어요" }, { status: 500 });
+  }
   return NextResponse.json(data ?? []);
 }
 
 /** POST /api/review-updates */
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`review-updates-post:${ip}`, 5, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   // 인증: httpOnly 쿠키에서 읽음 (IDOR 방지)
   const authUserId = await getAuthUserId();
   if (!authUserId) {
@@ -36,6 +48,10 @@ export async function POST(req: NextRequest) {
   // 필수 검증 (kakao_user_id는 쿠키에서 가져오므로 body에서 제외)
   if (!review_id || !nickname || !months_elapsed || !income_range || !content) {
     return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
+  }
+  const nick = String(nickname).trim();
+  if (nick.length < 2 || nick.length > 30) {
+    return NextResponse.json({ error: "닉네임은 2~30자로 입력해주세요" }, { status: 400 });
   }
   if (!VALID_MONTHS.includes(Number(months_elapsed))) {
     return NextResponse.json({ error: "months_elapsed는 1, 3, 6, 12 중 하나여야 합니다" }, { status: 400 });
@@ -79,7 +95,7 @@ export async function POST(req: NextRequest) {
     .insert({
       review_id: String(review_id),
       kakao_user_id: authUserId, // 쿠키에서 가져온 검증된 ID
-      nickname: String(nickname).trim().slice(0, 30),
+      nickname: nick.slice(0, 30),
       months_elapsed: Number(months_elapsed) as UpdateMonths,
       income_range: income_range as IncomeRange,
       content: String(content).trim(),
@@ -87,6 +103,9 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("review-updates POST 에러:", error.message);
+    return NextResponse.json({ error: "업데이트 등록에 실패했어요" }, { status: 500 });
+  }
   return NextResponse.json(data, { status: 201 });
 }

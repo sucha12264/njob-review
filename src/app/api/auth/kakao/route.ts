@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     req.headers.get("x-real-ip") ??
     "unknown";
 
-  const { allowed } = rateLimit(ip, 10, 60_000);
+  const { allowed } = rateLimit(`kakao-auth:${ip}`, 10, 60_000);
   if (!allowed) {
     return NextResponse.json(
       { error: "Too Many Requests" },
@@ -84,6 +84,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("카카오 로그인 에러:", msg);
-    return NextResponse.redirect(new URL(`/?login=fail&reason=${encodeURIComponent(msg)}`, req.url));
+    // 내부 에러 메시지(TOKEN_FAIL 등)는 클라이언트에 노출하지 않음
+    return NextResponse.redirect(new URL("/?login=fail", req.url));
   }
 }

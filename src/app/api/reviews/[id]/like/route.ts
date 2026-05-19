@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { rateLimit } from "@/lib/rateLimit";
+import { getAuthUserId } from "@/lib/serverAuth";
 
 // PATCH /api/reviews/[id]/like — 좋아요 토글
 export async function PATCH(
@@ -17,11 +18,11 @@ export async function PATCH(
   }
 
   try {
-    const body = await req.json() as {
-      action: "like" | "unlike";
-      kakao_user_id?: string;
-    };
-    const { action, kakao_user_id } = body;
+    const body = await req.json() as { action: "like" | "unlike" };
+    const { action } = body;
+
+    // 서버 쿠키로 로그인 여부 확인 (클라이언트 제공 ID 신뢰 금지)
+    const kakao_user_id = await getAuthUserId();
 
     if (action !== "like" && action !== "unlike") {
       return NextResponse.json({ error: "잘못된 action" }, { status: 400 });

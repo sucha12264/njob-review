@@ -41,7 +41,8 @@ export async function GET(req: NextRequest) {
   const { data, error, count } = await finalQuery;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("reviews GET 에러:", error.message);
+    return NextResponse.json({ error: "후기를 불러오지 못했어요" }, { status: 500 });
   }
 
   // 페이지네이션 요청이면 래퍼 객체 반환, 아니면 배열 그대로 (하위 호환)
@@ -56,6 +57,8 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+const VALID_INCOME_RANGES = ["under_10", "10_to_30", "30_to_50", "50_to_100", "over_100"] as const;
 
 // POST /api/reviews — 새 후기 작성
 export async function POST(req: NextRequest) {
@@ -76,10 +79,28 @@ export async function POST(req: NextRequest) {
       anon_password,           // 익명 작성 시 비밀번호 (선택)
     } = body;
 
-    // 필수 항목 검증 (닉네임·부업·수익·만족도·본문만 필수)
-    if (!nickname || !hustle_id || !hustle_name || !income_range ||
-        !satisfaction || !content) {
+    // ── 필수 항목 검증 ──────────────────────────────────
+    const nick = String(nickname ?? "").trim();
+    if (!nick || nick.length < 2 || nick.length > 30) {
+      return NextResponse.json({ error: "닉네임은 2~30자로 입력해주세요" }, { status: 400 });
+    }
+
+    if (!hustle_id || !hustle_name) {
       return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
+    }
+
+    if (!VALID_INCOME_RANGES.includes(income_range)) {
+      return NextResponse.json({ error: "올바른 수익 범위를 선택해주세요" }, { status: 400 });
+    }
+
+    const sat = Number(satisfaction);
+    if (!Number.isInteger(sat) || sat < 1 || sat > 5) {
+      return NextResponse.json({ error: "만족도는 1~5점이어야 합니다" }, { status: 400 });
+    }
+
+    const bodyContent = String(content ?? "").trim();
+    if (bodyContent.length < 20) {
+      return NextResponse.json({ error: "후기 내용은 20자 이상 입력해주세요" }, { status: 400 });
     }
 
     // 허니팟 hustle_id 삽입 방지
@@ -95,7 +116,7 @@ export async function POST(req: NextRequest) {
     // 추천여부 자동결정 (미입력 시 만족도 기반)
     const autoRecommend = recommend !== undefined
       ? Boolean(recommend)
-      : Number(satisfaction) >= 4;
+      : sat >= 4;
 
     // 익명 후기: 비밀번호 해시 + IP 저장
     const isAnon = !kakao_user_id;
@@ -107,15 +128,15 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from("reviews")
       .insert({
-        nickname: String(nickname).slice(0, 30),
+        nickname: nick.slice(0, 30),
         hustle_id: String(hustle_id),
         hustle_name: String(hustle_name).slice(0, 50),
         income_range,
         weekly_hours: Number(weekly_hours) || 0,
-        difficulty: Number(difficulty) || 3,
-        satisfaction: Number(satisfaction),
+        difficulty: Math.min(5, Math.max(1, Number(difficulty) || 3)),
+        satisfaction: sat,
         title: autoTitle,
-        content: String(content).slice(0, 2000),
+        content: bodyContent.slice(0, 2000),
         pros: pros ? String(pros).slice(0, 500) : "",
         cons: cons ? String(cons).slice(0, 500) : "",
         recommend: autoRecommend,

@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { rateLimit } from "@/lib/rateLimit";
+import { getAuthUserId } from "@/lib/serverAuth";
 
-// GET /api/profile/liked-reviews?kakao_user_id=xxx
-// 카카오 로그인 유저가 좋아요한 후기 목록 (전체 Review 객체) 반환
+// GET /api/profile/liked-reviews — 로그인한 본인이 좋아요한 후기 목록 반환
 export async function GET(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   const { allowed } = rateLimit(`profile-liked:${ip}`, 30, 60_000);
   if (!allowed) return NextResponse.json([], { status: 429 });
 
-  const kakaoUserId = req.nextUrl.searchParams.get("kakao_user_id");
+  // 서버 쿠키로 로그인 여부 확인 — 타인의 좋아요 목록 조회 방지
+  const kakaoUserId = await getAuthUserId();
   if (!kakaoUserId) {
-    return NextResponse.json([], { status: 200 });
+    return NextResponse.json([], { status: 200 }); // 비로그인 시 빈 배열
   }
 
   // user_likes → reviews JOIN

@@ -35,10 +35,11 @@ export default function ProfileClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, user]);
 
-  async function loadMyReviews(u: KakaoUser) {
+  async function loadMyReviews(_u: KakaoUser) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/profile/reviews?kakao_user_id=${encodeURIComponent(String(u.id))}`);
+      // 서버가 쿠키로 본인 인증 — kakao_user_id 파라미터 불필요
+      const res = await fetch("/api/profile/reviews");
       if (res.ok) {
         const data: Review[] = await res.json();
         setReviews(data);
@@ -48,10 +49,11 @@ export default function ProfileClient() {
     }
   }
 
-  async function loadLikedReviews(u: KakaoUser) {
+  async function loadLikedReviews(_u: KakaoUser) {
     setLikedLoading(true);
     try {
-      const res = await fetch(`/api/profile/liked-reviews?kakao_user_id=${encodeURIComponent(String(u.id))}`);
+      // 서버가 쿠키로 본인 인증 — kakao_user_id 파라미터 불필요
+      const res = await fetch("/api/profile/liked-reviews");
       if (res.ok) {
         const data: Review[] = await res.json();
         setLikedReviews(data);

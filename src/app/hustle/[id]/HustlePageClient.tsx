@@ -11,6 +11,7 @@ import ShareButtons from "@/components/ShareButtons";
 import QuickWriteBox from "@/components/QuickWriteBox";
 import HustleQnA from "@/components/HustleQnA";
 import type { Review } from "@/lib/types";
+import { COMPARE_PAIRS } from "@/lib/comparePairs";
 
 
 async function trackClick(hustleId: string, hustleName: string) {
@@ -52,6 +53,17 @@ export default function HustlePageClient({ hustle, guide }: Props) {
   const relatedHustles = ALL_HUSTLES
     .filter((h) => h.category === hustle.category && h.id !== id)
     .slice(0, 5);
+
+  // 이 부업이 포함된 비교 조합 (사이드바용)
+  const comparePairs = COMPARE_PAIRS
+    .filter((p) => p.a === id || p.b === id)
+    .slice(0, 3)
+    .map((p) => {
+      const otherId = p.a === id ? p.b : p.a;
+      const other = ALL_HUSTLES.find((h) => h.id === otherId);
+      return other ? { slug: `${p.a}-vs-${p.b}`, other } : null;
+    })
+    .filter(Boolean) as { slug: string; other: SideHustle }[];
 
   return (
     <>
@@ -121,8 +133,8 @@ export default function HustlePageClient({ hustle, guide }: Props) {
             <div className="card p-5">
               <h2 className="font-bold text-slate-800 mb-3">📌 이 부업이란?</h2>
               <p className="text-slate-600 leading-relaxed">{hustle.description}</p>
-              {(hustle.affiliateUrl ?? hustle.officialUrl) && (
-                <div className="mt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {(hustle.affiliateUrl ?? hustle.officialUrl) && (
                   <a
                     href={hustle.affiliateUrl ?? hustle.officialUrl}
                     target="_blank"
@@ -132,12 +144,18 @@ export default function HustlePageClient({ hustle, guide }: Props) {
                   >
                     🔗 공식 사이트 바로가기 →
                   </a>
-                  {hustle.affiliateUrl && (
-                    <p className="text-[11px] text-slate-300 mt-1">
-                      이 링크는 쿠팡 파트너스 활동의 일환으로, 수수료를 제공받을 수 있습니다.
-                    </p>
-                  )}
-                </div>
+                )}
+                <Link
+                  href={`/hustle/${id}/guide`}
+                  className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 font-medium border border-slate-200 hover:border-indigo-300 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  📖 시작 가이드 보기 →
+                </Link>
+              </div>
+              {hustle.affiliateUrl && (
+                <p className="text-[11px] text-slate-300 mt-2">
+                  이 링크는 쿠팡 파트너스 활동의 일환으로, 수수료를 제공받을 수 있습니다.
+                </p>
               )}
             </div>
 
@@ -413,6 +431,28 @@ export default function HustlePageClient({ hustle, guide }: Props) {
                         <p className="text-slate-600 group-hover:text-indigo-600 transition-colors truncate font-medium text-xs">{h.name}</p>
                         <p className="text-slate-400 text-[11px] truncate">{h.incomeRange}</p>
                       </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 비교 링크 */}
+            {comparePairs.length > 0 && (
+              <div className="card p-4">
+                <h3 className="font-bold text-slate-700 text-sm mb-3">⚖️ 다른 부업과 비교</h3>
+                <div className="space-y-2">
+                  {comparePairs.map(({ slug, other }) => (
+                    <Link
+                      key={slug}
+                      href={`/compare/${slug}`}
+                      className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors group text-sm"
+                    >
+                      <span>{other.emoji}</span>
+                      <span className="text-slate-600 group-hover:text-indigo-600 transition-colors text-xs truncate flex-1">
+                        {hustle.name} vs {other.name}
+                      </span>
+                      <span className="text-slate-300 group-hover:text-indigo-400 text-xs">→</span>
                     </Link>
                   ))}
                 </div>

@@ -23,6 +23,8 @@ const POPULAR_PAIRS: { a: string; b: string; label: string }[] = [
   { a: "coupang-partners", b: "naver-blog", label: "쿠팡파트너스 vs 블로그" },
   { a: "naver-blog", b: "tistory", label: "네이버블로그 vs 티스토리" },
   { a: "ebook", b: "notion-template", label: "전자책 vs 노션템플릿" },
+  { a: "baemin-rider", b: "coupang-flex", label: "배민라이더 vs 쿠팡플렉스" },
+  { a: "kream", b: "used-flip", label: "KREAM vs 중고 플리핑" },
 ];
 
 function HustleSelector({
@@ -223,9 +225,9 @@ export default function CompareClient({ initialA = "youtube", initialB = "tiktok
             {POPULAR_PAIRS.map((pair) => {
               const isActive = idA === pair.a && idB === pair.b;
               return (
-                <button
+                <Link
                   key={pair.label}
-                  onClick={() => { setIdA(pair.a); setIdB(pair.b); }}
+                  href={`/compare/${pair.a}-vs-${pair.b}`}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                     isActive
                       ? "bg-indigo-600 text-white border-indigo-600"
@@ -233,7 +235,7 @@ export default function CompareClient({ initialA = "youtube", initialB = "tiktok
                   }`}
                 >
                   {pair.label}
-                </button>
+                </Link>
               );
             })}
           </div>

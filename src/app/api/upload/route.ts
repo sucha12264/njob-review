@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { rateLimit } from "@/lib/rateLimit";
+import { getAuthUserId } from "@/lib/serverAuth";
 
 export async function POST(req: NextRequest) {
   // 업로드: IP당 분당 5회
@@ -11,10 +12,10 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const kakaoUserId = formData.get("kakao_user_id") as string | null;
 
-    // 로그인 유저만 업로드 허용
-    if (!kakaoUserId?.trim()) {
+    // 서버 쿠키로 로그인 여부 검증 (클라이언트 제공값 신뢰 금지)
+    const kakaoUserId = await getAuthUserId();
+    if (!kakaoUserId) {
       return NextResponse.json({ error: "로그인 후 이미지를 업로드할 수 있어요" }, { status: 401 });
     }
 

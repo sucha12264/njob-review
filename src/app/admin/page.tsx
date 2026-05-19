@@ -25,7 +25,7 @@ interface Report {
   status: "pending" | "resolved" | "dismissed";
 }
 
-type Tab = "reviews" | "comments" | "clicks" | "reports" | "write";
+type Tab = "reviews" | "comments" | "clicks" | "reports" | "write" | "hustles";
 
 // ─── 유틸 ─────────────────────────────────────────────
 function timeAgo(dateStr: string) {
@@ -46,6 +46,7 @@ export default function AdminPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [clickStats, setClickStats] = useState<{ hustle_name: string; count: number }[]>([]);
+  const [totalClicks, setTotalClicks] = useState(0);
   const [reports, setReports] = useState<Report[]>([]);
   const [stats, setStats] = useState({ total: 0, today: 0, withProof: 0, totalComments: 0 });
   const [loading, setLoading] = useState(false);
@@ -98,8 +99,9 @@ export default function AdminPage() {
         setStats((prev) => ({ ...prev, totalComments: cmm.length }));
       }
       if (clkRes.ok) {
-        const { stats: cls } = await clkRes.json() as { stats: { hustle_name: string; count: number }[] };
+        const { stats: cls, total: clkTotal } = await clkRes.json() as { stats: { hustle_name: string; count: number }[]; total: number };
         setClickStats(cls);
+        setTotalClicks(clkTotal ?? 0);
       }
       if (rptRes.ok) {
         const { reports: rpt } = await rptRes.json() as { reports: Report[] };
@@ -206,6 +208,23 @@ export default function AdminPage() {
   const reviewMap = Object.fromEntries(reviews.map((r) => [r.id, r]));
   const pendingCount = reports.filter((r) => r.status === "pending").length;
 
+  // 이번 주 후기 수
+  const weekAgo = Date.now() - 7 * 86400000;
+  const thisWeekCount = reviews.filter((r) => new Date(r.created_at).getTime() > weekAgo).length;
+
+  // 부업별 후기 현황 (후기 수 오름차순 정렬 → 부족한 부업 먼저)
+  const hustleReviewStats = ALL_HUSTLES
+    .filter((h) => !h.isTerminated && !h.id.startsWith("__hp__"))
+    .map((h) => {
+      const hustleReviews = reviews.filter((r) => r.hustle_id === h.id);
+      const avgSat = hustleReviews.length
+        ? (hustleReviews.reduce((s, r) => s + r.satisfaction, 0) / hustleReviews.length).toFixed(1)
+        : null;
+      const latest = hustleReviews[0]?.created_at ?? null;
+      return { hustle: h, count: hustleReviews.length, avgSat, latest };
+    })
+    .sort((a, b) => a.count - b.count);
+
   // ─── 로그인 화면 ───────────────────────────────────────
   if (!authed) {
     return (
@@ -267,11 +286,21 @@ export default function AdminPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
             { label: "전체 후기", value: stats.total, icon: "📝", color: "text-slate-800" },
-            { label: "오늘 등록", value: stats.today, icon: "🆕", color: "text-indigo-600" },
-            { label: "수익 인증", value: stats.withProof, icon: "📸", color: "text-green-600" },
-            { label: "전체 댓글", value: stats.totalComments, icon: "💬", color: "text-violet-600" },
+            { label: "이번 주 신규", value: thisWeekCount, icon: "📈", color: "text-indigo-600" },
+            {
+              label: "신고 대기",
+              value: pendingCount,
+              icon: "🚨",
+              color: pendingCount > 0 ? "text-red-500" : "text-slate-400",
+              onClick: pendingCount > 0 ? () => setActiveTab("reports") : undefined,
+            },
+            { label: "총 클릭", value: totalClicks, icon: "👆", color: "text-green-600" },
           ].map((s) => (
-            <div key={s.label} className="card p-5 text-center">
+            <div
+              key={s.label}
+              className={`card p-5 text-center ${s.onClick ? "cursor-pointer hover:border-red-200 transition-colors" : ""}`}
+              onClick={s.onClick}
+            >
               <div className="text-2xl mb-1">{s.icon}</div>
               <div className={`text-3xl font-black ${s.color}`}>{s.value}</div>
               <div className="text-xs text-slate-400 mt-1">{s.label}</div>
@@ -286,7 +315,8 @@ export default function AdminPage() {
               { key: "write", label: "✏️ 후기 등록" },
               { key: "reviews", label: "📝 후기 관리" },
               { key: "comments", label: "💬 댓글 관리" },
-              { key: "clicks", label: "📊 클릭 통계" },
+              { key: "hustles", label: "📋 부업 현황" },
+              { key: "clicks", label: "👆 클릭 통계" },
               { key: "reports", label: "🚨 신고 관리", badge: pendingCount },
             ] as { key: Tab; label: string; badge?: number }[]
           ).map((tab) => (
@@ -502,6 +532,79 @@ export default function AdminPage() {
         )}
 
         {/* ─── 클릭 통계 ─── */}
+        {/* ─── 부업별 현황 ─── */}
+        {activeTab === "hustles" && (
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm">📋 부업별 후기 현황</h3>
+              <span className="text-xs text-slate-400">후기 적은 순 정렬 — 시딩 우선순위 파악용</span>
+            </div>
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left px-4 py-3 text-slate-500 font-semibold">부업명</th>
+                  <th className="text-left px-4 py-3 text-slate-500 font-semibold w-20">후기 수</th>
+                  <th className="text-left px-4 py-3 text-slate-500 font-semibold w-20">평균 ★</th>
+                  <th className="text-left px-4 py-3 text-slate-500 font-semibold">최근 후기</th>
+                  <th className="text-left px-4 py-3 text-slate-500 font-semibold w-16">바로가기</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {loading ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">불러오는 중...</td></tr>
+                ) : (
+                  hustleReviewStats.map(({ hustle, count, avgSat, latest }) => (
+                    <tr key={hustle.id} className={`hover:bg-slate-50 transition-colors ${count === 0 ? "bg-red-50/40" : count < 5 ? "bg-amber-50/40" : ""}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span>{hustle.emoji}</span>
+                          <div>
+                            <p className="font-medium text-slate-800">{hustle.name}</p>
+                            <p className="text-[11px] text-slate-400">{hustle.category}</p>
+                          </div>
+                          {count === 0 && <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-bold">없음</span>}
+                          {count > 0 && count < 5 && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">부족</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`font-bold ${count === 0 ? "text-red-500" : count < 5 ? "text-amber-600" : "text-slate-700"}`}>
+                          {count}개
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {avgSat ? (
+                          <span className="flex items-center gap-1">
+                            <span className="text-amber-400 text-xs">★</span>
+                            <span className="font-medium">{avgSat}</span>
+                          </span>
+                        ) : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">
+                        {latest ? timeAgo(latest) : <span className="text-slate-200">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <a
+                          href={`/hustle/${hustle.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-indigo-500 hover:underline"
+                        >
+                          보기 →
+                        </a>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400 flex gap-4">
+              <span className="text-red-500">없음 {hustleReviewStats.filter((h) => h.count === 0).length}개</span>
+              <span className="text-amber-600">부족(5개 미만) {hustleReviewStats.filter((h) => h.count > 0 && h.count < 5).length}개</span>
+              <span className="text-green-600">충분(5개+) {hustleReviewStats.filter((h) => h.count >= 5).length}개</span>
+            </div>
+          </div>
+        )}
+
         {activeTab === "clicks" && (
           <div className="card overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -612,21 +715,41 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{timeAgo(rp.created_at)}</td>
                           <td className="px-4 py-3">
                             {rp.status === "pending" && (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => updateReportStatus(rp.id, "resolved")}
-                                  disabled={resolvingReportId === rp.id}
-                                  className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded transition-colors disabled:opacity-40 whitespace-nowrap"
-                                >
-                                  처리
-                                </button>
-                                <button
-                                  onClick={() => updateReportStatus(rp.id, "dismissed")}
-                                  disabled={resolvingReportId === rp.id}
-                                  className="text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 px-2 py-1 rounded transition-colors disabled:opacity-40 whitespace-nowrap"
-                                >
-                                  기각
-                                </button>
+                              <div className="flex flex-col gap-1">
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => updateReportStatus(rp.id, "resolved")}
+                                    disabled={resolvingReportId === rp.id}
+                                    className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded transition-colors disabled:opacity-40 whitespace-nowrap"
+                                  >
+                                    처리
+                                  </button>
+                                  <button
+                                    onClick={() => updateReportStatus(rp.id, "dismissed")}
+                                    disabled={resolvingReportId === rp.id}
+                                    className="text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-100 px-2 py-1 rounded transition-colors disabled:opacity-40 whitespace-nowrap"
+                                  >
+                                    기각
+                                  </button>
+                                </div>
+                                {/* 신고된 콘텐츠 바로 삭제 */}
+                                {(rev ?? cmt) && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm("신고 처리 + 해당 콘텐츠를 삭제할까요?")) return;
+                                      if (rp.type === "review" && rev) {
+                                        await deleteReview(rev.id);
+                                      } else if (rp.type === "comment" && cmt) {
+                                        await deleteComment(cmt.id);
+                                      }
+                                      await updateReportStatus(rp.id, "resolved");
+                                    }}
+                                    disabled={resolvingReportId === rp.id}
+                                    className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors disabled:opacity-40 whitespace-nowrap border border-red-200"
+                                  >
+                                    처리+삭제
+                                  </button>
+                                )}
                               </div>
                             )}
                           </td>

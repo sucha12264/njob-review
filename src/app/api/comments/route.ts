@@ -4,6 +4,10 @@ import { rateLimit } from "@/lib/rateLimit";
 
 // GET /api/comments?review_id=xxx
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`comments-get:${ip}`, 60, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   const reviewId = req.nextUrl.searchParams.get("review_id");
   if (!reviewId) {
     return NextResponse.json({ error: "review_id 필요" }, { status: 400 });
@@ -16,7 +20,8 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("comments GET 에러:", error.message);
+    return NextResponse.json({ error: "댓글을 불러오지 못했어요" }, { status: 500 });
   }
 
   return NextResponse.json(data ?? []);
@@ -42,6 +47,9 @@ export async function POST(req: NextRequest) {
     if (!review_id || !nickname?.trim() || !content?.trim()) {
       return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
     }
+    if (nickname.trim().length < 2) {
+      return NextResponse.json({ error: "닉네임은 2자 이상 입력해주세요" }, { status: 400 });
+    }
     if (content.length > 500) {
       return NextResponse.json({ error: "댓글은 500자 이내로 작성해주세요" }, { status: 400 });
     }
@@ -56,7 +64,10 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("댓글 작성 에러:", error);
+      return NextResponse.json({ error: "댓글 등록에 실패했어요" }, { status: 500 });
+    }
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
     console.error("댓글 작성 에러:", err);

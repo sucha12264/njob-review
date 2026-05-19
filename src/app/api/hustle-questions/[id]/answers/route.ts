@@ -16,7 +16,10 @@ export async function GET(
     .order("is_best", { ascending: false })   // 채택 답변 최상단
     .order("created_at", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("hustle-answers GET 에러:", error.message);
+    return NextResponse.json({ error: "답변을 불러오지 못했어요" }, { status: 500 });
+  }
   return NextResponse.json(data ?? []);
 }
 
@@ -66,6 +69,9 @@ export async function POST(
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("hustle-answers POST 에러:", error.message);
+    return NextResponse.json({ error: "답변 등록에 실패했어요" }, { status: 500 });
+  }
   return NextResponse.json(data, { status: 201 });
 }

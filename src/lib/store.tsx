@@ -103,7 +103,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const kakaoUser = getStoredUser();
     if (!kakaoUser) return;
     try {
-      const res = await fetch(`/api/profile/likes?kakao_user_id=${encodeURIComponent(String(kakaoUser.id))}`);
+      // 서버가 쿠키로 본인 인증 — kakao_user_id 파라미터 불필요
+      const res = await fetch("/api/profile/likes");
       if (!res.ok) return;
       const dbIds: string[] = await res.json();
       if (dbIds.length > 0) {

@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { ALL_HUSTLES, CATEGORY_SLUG } from "@/lib/hustleData";
+import { COMPARE_PAIRS } from "@/lib/comparePairs";
 import { createClient } from "@supabase/supabase-js";
 import { BASE_URL } from "@/lib/constants";
 
@@ -10,6 +11,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly" as const,
     priority: h.isHot ? 0.9 : 0.7,
   }));
+
+  // 인기 부업 비교 페이지
+  const compareUrls = COMPARE_PAIRS.map(({ a, b }) => ({
+    url: `${BASE_URL}/compare/${a}-vs-${b}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
+  // 부업별 가이드 페이지 (허니팟 제외)
+  const guideUrls = ALL_HUSTLES
+    .filter((h) => !h.id.startsWith("__hp__"))
+    .map((h) => ({
+      url: `${BASE_URL}/hustle/${h.id}/guide`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: h.isHot ? 0.85 : 0.65,
+    }));
 
   let reviewUrls: MetadataRoute.Sitemap = [];
   let boardUrls: MetadataRoute.Sitemap = [];
@@ -69,7 +88,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     ...categoryUrls,
+    ...compareUrls,
     ...hustleUrls,
+    ...guideUrls,
     ...reviewUrls,
     ...boardUrls,
   ];

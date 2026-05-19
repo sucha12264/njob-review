@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
+import { rateLimit } from "@/lib/rateLimit";
 import { ALL_HUSTLES } from "@/lib/hustleData";
 
 export interface RankedHustle {
@@ -18,13 +19,20 @@ export interface RankedHustle {
 
 const HUSTLE_MAP = new Map(ALL_HUSTLES.map((h) => [h.id, h]));
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`ranking:${ip}`, 30, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   const { data: reviews, error } = await supabaseAdmin
     .from("reviews")
     .select("hustle_id, hustle_name, satisfaction, recommend, likes, income_range")
     .not("hustle_id", "like", "__hp__%");
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("ranking GET 에러:", error.message);
+    return NextResponse.json({ error: "랭킹을 불러오지 못했어요" }, { status: 500 });
+  }
 
   // JS에서 hustle_id 기준 집계
   const statsMap = new Map<

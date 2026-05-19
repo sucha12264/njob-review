@@ -11,7 +11,11 @@ export async function PATCH(
   if (deny) return deny;
 
   const { id } = await params;
-  const { status } = await req.json() as { status: "resolved" | "dismissed" };
+  const { status } = await req.json() as { status: string };
+
+  if (!["resolved", "dismissed"].includes(status)) {
+    return NextResponse.json({ error: "잘못된 status 값" }, { status: 400 });
+  }
 
   const { error } = await supabaseAdmin
     .from("reports")

@@ -27,6 +27,12 @@ export async function POST(req: NextRequest) {
     if (!["review", "comment"].includes(type)) {
       return NextResponse.json({ error: "잘못된 타입" }, { status: 400 });
     }
+    if (String(reason).trim().length < 2) {
+      return NextResponse.json({ error: "신고 사유를 입력해주세요" }, { status: 400 });
+    }
+    if (String(reason).length > 500) {
+      return NextResponse.json({ error: "신고 사유는 500자 이내로 입력해주세요" }, { status: 400 });
+    }
 
     const { error } = await supabaseAdmin.from("reports").insert({
       type,

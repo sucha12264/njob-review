@@ -5,6 +5,10 @@ import { rateLimit } from "@/lib/rateLimit";
 const PAGE_SIZE = 10;
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = rateLimit(`hustle-q-get:${ip}`, 60, 60_000);
+  if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+
   const { searchParams } = new URL(req.url);
   const hustle_id = searchParams.get("hustle_id");
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -21,7 +25,10 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false })
     .range(from, to);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("hustle-questions GET 에러:", error.message);
+    return NextResponse.json({ error: "질문을 불러오지 못했어요" }, { status: 500 });
+  }
   return NextResponse.json({ questions: data ?? [], total: count ?? 0 });
 }
 
@@ -57,6 +64,9 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("hustle-questions POST 에러:", error.message);
+    return NextResponse.json({ error: "질문 등록에 실패했어요" }, { status: 500 });
+  }
   return NextResponse.json(data, { status: 201 });
 }

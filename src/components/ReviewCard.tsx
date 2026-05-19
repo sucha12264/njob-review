@@ -92,6 +92,19 @@ export default function ReviewCard({ review, hideHustleTag }: { review: Review; 
         </div>
       </div>
 
+      {/* 가이드 링크 (부업 태그 있을 때만) */}
+      {!hideHustleTag && (
+        <div className="mb-3">
+          <Link
+            href={`/hustle/${review.hustle_id}/guide`}
+            className="text-xs text-slate-400 hover:text-indigo-500 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            📖 {review.hustle_name} 시작 가이드 보기 →
+          </Link>
+        </div>
+      )}
+
       {/* 하단 */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-slate-400">✍️ {review.nickname}</span>
