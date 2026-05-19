@@ -21,6 +21,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "k.kakaocdn.net" },
+      { protocol: "https", hostname: "img1.kakaocdn.net" },
+    ],
+    formats: ["image/avif", "image/webp"],
+  },
   experimental: {
     serverActions: {
       allowedOrigins: ["localhost:3000", "njob-review.vercel.app"],

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import ReviewCard from "@/components/ReviewCard";
 import { useStore } from "@/lib/store";
 import {
@@ -349,7 +350,7 @@ function PartnerBanner() {
           className="flex flex-col sm:flex-row items-center gap-5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-yellow-400/40 rounded-2xl p-5 sm:p-6 transition-all group"
         >
           <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center flex-shrink-0 p-2">
-            <img src="/partners/ntelecom.png" alt="N텔레콤" className="w-full h-full object-contain" />
+            <Image src="/partners/ntelecom.png" alt="N텔레콤" width={64} height={64} className="object-contain" />
           </div>
           <div className="flex-1 text-center sm:text-left">
             <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-1.5">

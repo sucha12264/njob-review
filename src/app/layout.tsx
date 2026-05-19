@@ -91,15 +91,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
+        {/* Kakao CDN 사전 연결 — SDK 로딩 지연 감소 */}
+        <link rel="preconnect" href="https://t1.kakaocdn.net" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://t1.kakaocdn.net" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
+        {/* afterInteractive: 로그인은 OAuth 리다이렉트, 공유는 waitForKakao()로 대기하므로 렌더 차단 불필요 */}
         <Script
           src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"
           integrity="sha384-TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4"
           crossOrigin="anonymous"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
       </head>
       <body className="min-h-screen">
