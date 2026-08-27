@@ -5,6 +5,9 @@ import type { Post } from "@/lib/types";
 import PostDetailClient from "./PostDetailClient";
 import { BASE_URL } from "@/lib/constants";
 
+// ISR — 매 요청 Supabase 왕복 대신 CDN 캐시를 태운다
+export const revalidate = 3600;
+
 export async function generateMetadata({
   params,
 }: {
@@ -17,11 +20,11 @@ export async function generateMetadata({
     .eq("id", id)
     .single();
 
-  if (!data) return { title: "게시글 없음 | N잡 후기판" };
+  if (!data) return { title: "게시글 없음" };
 
   const desc = (data.content as string).slice(0, 150).replace(/\n/g, " ");
   return {
-    title: `${data.title} | N잡 후기판`,
+    title: data.title as string,
     description: desc,
     alternates: { canonical: `${BASE_URL}/board/${id}` },
     openGraph: {

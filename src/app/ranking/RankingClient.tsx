@@ -54,8 +54,6 @@ function TrendingBanner({ className = "" }: { className?: string }) {
 }
 
 const MEDAL = ["🥇", "🥈", "🥉"];
-const DIFFICULTY_LABEL = ["", "매우쉬움", "쉬움", "보통", "어려움", "매우어려움"];
-const DIFFICULTY_COLOR = ["", "text-green-500", "text-green-500", "text-amber-500", "text-orange-500", "text-red-500"];
 
 function StatBadge({ value, label }: { value: string; label: string }) {
   return (
@@ -176,8 +174,7 @@ export default function RankingClient({ initialData }: Props) {
       });
   }, [initialData, sortKey]);
 
-  const top3   = sorted.slice(0, 3);
-  const others = sorted.slice(3);
+  const top3 = sorted.slice(0, 3);
 
   function handleShare() {
     navigator.clipboard.writeText(window.location.href).then(() => {

@@ -2,62 +2,58 @@ import { MetadataRoute } from "next";
 import { ALL_HUSTLES, CATEGORY_SLUG } from "@/lib/hustleData";
 import { COMPARE_PAIRS } from "@/lib/comparePairs";
 import { createClient } from "@supabase/supabase-js";
-import { BASE_URL } from "@/lib/constants";
+import { BASE_URL, STATIC_CONTENT_UPDATED } from "@/lib/constants";
 
+/**
+ * 개별 후기 페이지(/review/[id])는 사이트맵에 넣지 않는다.
+ * 후기 본문이 평균 100자 남짓이라 단독 페이지로는 색인 기준을 넘지 못하고,
+ * 이런 URL이 사이트맵의 대부분을 차지하면 사이트 전체가 저품질로 평가된다.
+ * 후기 콘텐츠는 /hustle/[id] 페이지에 모아서 노출한다.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const hustleUrls = ALL_HUSTLES.map((h) => ({
     url: `${BASE_URL}/hustle/${h.id}`,
-    lastModified: new Date(),
+    lastModified: STATIC_CONTENT_UPDATED,
     changeFrequency: "weekly" as const,
     priority: h.isHot ? 0.9 : 0.7,
   }));
 
-  // 인기 부업 비교 페이지
   const compareUrls = COMPARE_PAIRS.map(({ a, b }) => ({
     url: `${BASE_URL}/compare/${a}-vs-${b}`,
-    lastModified: new Date(),
+    lastModified: STATIC_CONTENT_UPDATED,
     changeFrequency: "monthly" as const,
     priority: 0.8,
   }));
 
-  // 부업별 가이드 페이지 (허니팟 제외)
-  const guideUrls = ALL_HUSTLES
-    .filter((h) => !h.id.startsWith("__hp__"))
-    .map((h) => ({
-      url: `${BASE_URL}/hustle/${h.id}/guide`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: h.isHot ? 0.85 : 0.65,
-    }));
+  const guideUrls = ALL_HUSTLES.map((h) => ({
+    url: `${BASE_URL}/hustle/${h.id}/guide`,
+    lastModified: STATIC_CONTENT_UPDATED,
+    changeFrequency: "monthly" as const,
+    priority: h.isHot ? 0.85 : 0.65,
+  }));
 
-  let reviewUrls: MetadataRoute.Sitemap = [];
+  const categoryUrls = Object.values(CATEGORY_SLUG).map((slug) => ({
+    url: `${BASE_URL}/category/${slug}`,
+    lastModified: STATIC_CONTENT_UPDATED,
+    changeFrequency: "weekly" as const,
+    priority: 0.85,
+  }));
+
   let boardUrls: MetadataRoute.Sitemap = [];
   try {
     const supabase = createClient(
       (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)!,
       (process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!
     );
-    const { data } = await supabase
-      .from("reviews")
-      .select("id, created_at")
-      .not("hustle_id", "like", "__hp__%")
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      reviewUrls = data.map((r: { id: string; created_at: string }) => ({
-        url: `${BASE_URL}/review/${r.id}`,
-        lastModified: new Date(r.created_at),
-        changeFrequency: "monthly" as const,
-        priority: 0.6,
-      }));
-    }
-
-    // 게시판 게시글
-    const { data: posts } = await supabase
+    const { data: posts, error: postsError } = await supabase
       .from("posts")
       .select("id, created_at")
       .order("created_at", { ascending: false })
       .limit(500);
+
+    if (postsError) {
+      console.error("[sitemap] posts 조회 실패:", postsError.message);
+    }
 
     if (posts) {
       boardUrls = posts.map((p: { id: string; created_at: string }) => ({
@@ -67,31 +63,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.5,
       }));
     }
-  } catch {
-    // Supabase 연결 실패 시 동적 URL 제외하고 계속
+  } catch (e) {
+    // 게시판 URL이 통째로 빠져도 사이트맵 자체는 나가야 하므로 계속 진행하되,
+    // 조용히 삼키면 원인 추적이 불가능하므로 반드시 남긴다.
+    console.error("[sitemap] Supabase 접근 실패:", e instanceof Error ? e.message : e);
   }
 
-  const categoryUrls = Object.values(CATEGORY_SLUG).map((slug) => ({
-    url: `${BASE_URL}/category/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.85,
-  }));
-
   return [
-    { url: BASE_URL, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-    { url: `${BASE_URL}/recommend`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.95 },
-    { url: `${BASE_URL}/compare`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
-    { url: `${BASE_URL}/ranking`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${BASE_URL}/board`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${BASE_URL}/write`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-    { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: BASE_URL, lastModified: STATIC_CONTENT_UPDATED, changeFrequency: "daily", priority: 1 },
+    { url: `${BASE_URL}/recommend`, lastModified: STATIC_CONTENT_UPDATED, changeFrequency: "weekly", priority: 0.95 },
+    { url: `${BASE_URL}/compare`, lastModified: STATIC_CONTENT_UPDATED, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${BASE_URL}/ranking`, lastModified: STATIC_CONTENT_UPDATED, changeFrequency: "daily", priority: 0.9 },
+    { url: `${BASE_URL}/board`, lastModified: STATIC_CONTENT_UPDATED, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE_URL}/privacy`, lastModified: STATIC_CONTENT_UPDATED, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE_URL}/terms`, lastModified: STATIC_CONTENT_UPDATED, changeFrequency: "yearly", priority: 0.3 },
     ...categoryUrls,
     ...compareUrls,
     ...hustleUrls,
     ...guideUrls,
-    ...reviewUrls,
     ...boardUrls,
   ];
 }

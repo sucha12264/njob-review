@@ -34,6 +34,12 @@ const nextConfig: NextConfig = {
       allowedOrigins: ["localhost:3000", "njob-review.vercel.app"],
     },
   },
+  async redirects() {
+    return [
+      // 구 URL /side-job/[type] → /hustle/[id]
+      { source: "/side-job/:type", destination: "/hustle/:type", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

@@ -29,6 +29,9 @@ const DIFFICULTY_BG = [
 ];
 
 
+// ISR — 빌드 시점 고정이라 후기가 늘어도 갱신되지 않던 문제 해결
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   return COMPARE_PAIRS.map(({ a, b }) => ({ slug: `${a}-vs-${b}` }));
 }
@@ -51,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!hustleA || !hustleB) return {};
 
   const year = new Date().getFullYear();
-  const title = `${hustleA.name} vs ${hustleB.name} 비교 (${year}) — 어떤 부업이 나에게 맞을까? | N잡 후기판`;
+  const title = `${hustleA.name} vs ${hustleB.name} 비교 (${year}) — 어떤 부업이 나에게 맞을까?`;
   const description = `${hustleA.name}과 ${hustleB.name}을 수익·난이도·초기비용·장단점까지 상세 비교. 초보자라면 ${hustleA.difficulty <= hustleB.difficulty ? hustleA.name : hustleB.name}이 더 쉬워요. ${year} 최신 정보 기준.`;
   const url = `${BASE_URL}/compare/${slug}`;
 

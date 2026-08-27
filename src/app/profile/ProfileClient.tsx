@@ -21,7 +21,7 @@ export default function ProfileClient() {
     const u = getStoredUser();
     setUser(u);
     if (u) {
-      loadMyReviews(u);
+      loadMyReviews();
     } else {
       setLoading(false);
     }
@@ -30,12 +30,12 @@ export default function ProfileClient() {
   // 좋아요 탭 전환 시 로드
   useEffect(() => {
     if (tab === "liked" && user && likedReviews.length === 0 && !likedLoading) {
-      loadLikedReviews(user);
+      loadLikedReviews();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, user]);
 
-  async function loadMyReviews(_u: KakaoUser) {
+  async function loadMyReviews() {
     setLoading(true);
     try {
       // 서버가 쿠키로 본인 인증 — kakao_user_id 파라미터 불필요
@@ -49,7 +49,7 @@ export default function ProfileClient() {
     }
   }
 
-  async function loadLikedReviews(_u: KakaoUser) {
+  async function loadLikedReviews() {
     setLikedLoading(true);
     try {
       // 서버가 쿠키로 본인 인증 — kakao_user_id 파라미터 불필요

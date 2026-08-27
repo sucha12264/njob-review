@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isSameOriginApiRequest } from "@/lib/apiOrigin";
 
 // ─── 유지보수 모드 ─────────────────────────────────────────
 const MAINTENANCE_MODE = false;
@@ -123,20 +124,13 @@ export function middleware(request: NextRequest) {
     const isKakaoCallback = pathname.startsWith("/api/auth/kakao");
 
     if (!isKakaoCallback) {
-      // Origin 또는 Referer가 자기 도메인이어야 함
-      const origin = request.headers.get("origin") ?? "";
-      const referer = request.headers.get("referer") ?? "";
-      const host = request.headers.get("host") ?? "";
-
-      const isLocalDev = host.includes("localhost") || host.includes("127.0.0.1");
-      // 브라우저는 same-origin GET에 Origin 헤더를 생략하므로, host 기반으로 동적 판별
-      // (하드코딩된 도메인 대신 현재 요청의 host를 기준으로 비교 → 도메인 변경에 무관)
-      const isSameOriginRequest = !origin && !!host;
-      const isOwnDomain =
-        (origin && host && origin.includes(host)) ||
-        (referer && host && referer.includes(host)) ||
-        isSameOriginRequest ||
-        isLocalDev;
+      // 우리 페이지에서 출발한 요청인지 판별 (판별 규칙은 lib/apiOrigin.ts 참고)
+      const isOwnDomain = isSameOriginApiRequest({
+        origin: request.headers.get("origin") ?? "",
+        referer: request.headers.get("referer") ?? "",
+        host: request.headers.get("host") ?? "",
+        secFetchSite: request.headers.get("sec-fetch-site") ?? "",
+      });
 
       if (!isOwnDomain) {
         return new NextResponse(

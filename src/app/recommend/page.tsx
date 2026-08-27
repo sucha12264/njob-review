@@ -5,7 +5,7 @@ import type { SideHustle } from "@/lib/hustleData";
 import { BASE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "내게 맞는 부업 추천 | 상황별 N잡 추천 — N잡 후기판",
+  title: "내게 맞는 부업 추천 | 상황별 N잡 추천",
   description:
     "초보자·직장인·주부·학생 등 상황에 맞는 부업을 추천해드려요. 난이도·초기비용·수익으로 필터링한 맞춤 부업 목록.",
   openGraph: {

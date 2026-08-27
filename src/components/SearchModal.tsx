@@ -67,6 +67,15 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const navigate = useCallback(
+    (id: string, name: string) => {
+      addRecentSearch(name);
+      onClose();
+      router.push(`/hustle/${id}`);
+    },
+    [onClose, router]
+  );
+
   // 키보드 네비게이션
   const handleKey = useCallback(
     (e: React.KeyboardEvent) => {
@@ -81,14 +90,8 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         if (hustle) navigate(hustle.id, hustle.name);
       }
     },
-    [results, cursor]
+    [results, cursor, navigate]
   );
-
-  function navigate(id: string, name: string) {
-    addRecentSearch(name);
-    onClose();
-    router.push(`/hustle/${id}`);
-  }
 
   // cursor가 리스트 밖으로 나가지 않도록
   useEffect(() => {

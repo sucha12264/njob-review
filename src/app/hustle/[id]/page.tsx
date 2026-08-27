@@ -1,13 +1,23 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { HUSTLE_MAP } from "@/lib/hustleData";
+import { HUSTLE_MAP, ALL_HUSTLES } from "@/lib/hustleData";
 import { HUSTLE_GUIDES } from "@/lib/hustleGuides";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import HustlePageClient from "./HustlePageClient";
 import { BASE_URL } from "@/lib/constants";
+import type { Review } from "@/lib/types";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+// ISR — 매 요청 Supabase 왕복(TTFB ~1.1s) 대신 CDN 캐시를 태운다
+export const revalidate = 3600;
+
+// 부업 64종은 ALL_HUSTLES에 정적으로 있으므로 빌드 시점에 전부 프리렌더한다.
+// generateStaticParams가 없으면 revalidate를 줘도 Next가 매 요청 렌더링(no-store)한다.
+export async function generateStaticParams() {
+  return ALL_HUSTLES.map((h) => ({ id: h.id }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -17,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const guide = HUSTLE_GUIDES[id] ?? null;
   const prosSnippet = guide?.pros.slice(0, 2).join(", ");
-  const title = `${hustle.name} 후기 & 수익 정보 | N잡 후기판`;
+  const title = `${hustle.name} 후기 & 수익 정보`;
   const description = prosSnippet
     ? `${hustle.name} 실제 후기 모음. ${hustle.oneline}. 예상 수익 ${hustle.incomeRange}, 난이도 ${["", "매우쉬움", "쉬움", "보통", "어려움", "매우어려움"][hustle.difficulty]}. 장점: ${prosSnippet}.`
     : `${hustle.name} 실제 경험자 후기 모음. ${hustle.oneline}. 예상 수익 ${hustle.incomeRange}, 초기비용 ${hustle.startupCost}, 첫 수익까지 ${hustle.timeToFirst}.`;
@@ -59,16 +69,18 @@ export default async function HustlePage({ params }: Props) {
 
   const guide = HUSTLE_GUIDES[id] ?? null;
 
-  // 후기 데이터 서버사이드 로드 (Schema.org AggregateRating용)
+  // 후기 전량을 서버에서 로드해 초기 HTML에 본문까지 렌더링한다.
+  // (예전에는 limit(5)로 잘라 스키마에만 썼기 때문에 실제 페이지에 후기가 없었고,
+  //  AggregateRating의 reviewCount도 최대 5로 잘못 집계됐다.)
   const { data: reviews } = await supabaseAdmin
     .from("reviews")
-    .select("satisfaction, nickname, content, title, created_at")
+    .select(
+      "id, created_at, nickname, hustle_id, hustle_name, income_range, weekly_hours, difficulty, satisfaction, title, content, pros, cons, recommend, likes, proof_image_url"
+    )
     .eq("hustle_id", id)
-    .not("hustle_id", "like", "__hp__%")
-    .order("created_at", { ascending: false })
-    .limit(5);
+    .order("created_at", { ascending: false });
 
-  const reviewList = reviews ?? [];
+  const reviewList = (reviews ?? []) as Review[];
   const reviewCount = reviewList.length;
   const avgRating =
     reviewCount > 0
@@ -198,7 +210,7 @@ export default async function HustlePage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <HustlePageClient hustle={hustle} guide={guide} />
+      <HustlePageClient hustle={hustle} guide={guide} initialReviews={reviewList} />
     </>
   );
 }

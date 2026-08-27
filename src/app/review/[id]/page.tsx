@@ -6,6 +6,8 @@ import { HUSTLE_MAP } from "@/lib/hustleData";
 import ReviewDetailClient from "./ReviewDetailClient";
 import { BASE_URL } from "@/lib/constants";
 
+export const revalidate = 3600;
+
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Metadata> {
@@ -17,7 +19,7 @@ export async function generateMetadata(
       .eq("id", id)
       .single();
 
-    if (!data) return { title: "후기를 찾을 수 없어요 | N잡 후기판" };
+    if (!data) return { title: "후기를 찾을 수 없어요" };
 
     const rev = data as Pick<Review, "hustle_name" | "title" | "content" | "income_range" | "hustle_id">;
 
@@ -26,7 +28,10 @@ export async function generateMetadata(
       return { robots: { index: false, follow: false } };
     }
 
-    const ogTitle = `${rev.hustle_name} 후기: ${rev.title}`;
+    // 작성자가 제목에 이미 부업명을 넣은 경우가 많다 → 접두사를 붙이면 같은 말이 두 번 나온다
+    const ogTitle = rev.title.includes(rev.hustle_name)
+      ? rev.title
+      : `${rev.hustle_name} 후기: ${rev.title}`;
     const ogDesc = rev.content.slice(0, 150).replace(/\n/g, " ");
     const ogUrl = `${BASE_URL}/review/${id}`;
 
@@ -34,6 +39,9 @@ export async function generateMetadata(
       title: ogTitle,
       description: ogDesc,
       alternates: { canonical: ogUrl },
+      // 후기 본문은 평균 100자대로 단독 색인 기준에 못 미친다. 색인 대상에서 빼되
+      // follow는 유지해 부업 페이지로 링크 가치가 흐르게 한다. 카카오 공유 OG는 그대로 동작.
+      robots: { index: false, follow: true },
       openGraph: {
         type: "article",
         title: ogTitle,
@@ -57,7 +65,7 @@ export async function generateMetadata(
       },
     };
   } catch {
-    return { title: "N잡 후기 | N잡 후기판" };
+    return { title: "N잡 후기" };
   }
 }
 

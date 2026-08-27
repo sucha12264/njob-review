@@ -10,14 +10,6 @@ import {
 } from "@/lib/types";
 import type { ReviewUpdate, IncomeRange, UpdateMonths } from "@/lib/types";
 
-const INCOME_ARROW: Record<string, string> = {
-  under_10:   "text-slate-500",
-  "10_to_30": "text-blue-500",
-  "30_to_50": "text-green-500",
-  "50_to_100":"text-amber-500",
-  over_100:   "text-purple-600",
-};
-
 /** 두 income_range 사이 방향 아이콘 */
 function IncomeArrow({ from, to }: { from: string; to: string }) {
   const ORDER: Record<string, number> = {

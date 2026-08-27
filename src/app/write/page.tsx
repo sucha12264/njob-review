@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { getStoredUser } from "@/lib/kakaoAuth";
 import { ALL_HUSTLES, searchHustles, type SideHustle } from "@/lib/hustleData";
-import { INCOME_LABELS, type IncomeRange, type Satisfaction, type ReviewInput } from "@/lib/types";
+import { INCOME_LABELS, type IncomeRange, type ReviewInput } from "@/lib/types";
 
 const INCOME_RANGES = Object.keys(INCOME_LABELS) as IncomeRange[];
 

@@ -197,8 +197,6 @@ export default function CompareClient({ initialA = "youtube", initialB = "tiktok
   const hustleA = useMemo(() => HUSTLE_MAP[idA], [idA]);
   const hustleB = useMemo(() => HUSTLE_MAP[idB], [idB]);
 
-  const INCOME_ORDER = ["under_10", "10_to_30", "30_to_50", "50_to_100", "over_100"];
-
   function shareUrl() {
     const url = `${window.location.origin}/compare?a=${idA}&b=${idB}`;
     navigator.clipboard.writeText(url).catch(() => {});

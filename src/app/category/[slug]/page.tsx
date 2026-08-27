@@ -31,6 +31,9 @@ const CATEGORY_DESC: Record<string, string> = {
   "기타": "특수 온라인 부업 및 신규 부업 유형 모음",
 };
 
+// ISR — 빌드 시점 고정이라 후기가 늘어도 갱신되지 않던 문제 해결
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   return Object.values(CATEGORY_SLUG).map((slug) => ({ slug }));
 }
@@ -40,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = SLUG_CATEGORY[slug];
   if (!category) return { title: "카테고리 없음" };
 
-  const title = `${category} 부업 추천 & 후기 | N잡 후기판`;
+  const title = `${category} 부업 추천 & 후기`;
   const description = `${CATEGORY_DESC[category] ?? category + " 부업 목록과 실제 후기"}. 난이도·수익·초기비용을 한눈에 비교하고 내게 맞는 부업을 찾아보세요.`;
   const url = `${BASE_URL}/category/${slug}`;
 

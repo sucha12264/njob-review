@@ -18,9 +18,14 @@ export async function GET(req: NextRequest) {
   const pageParam = searchParams.get("page");
   const limitParam = searchParams.get("limit");
 
+  // select("*")는 anon_ip / anon_password_hash 까지 공개 응답에 실어보낸다.
+  // 클라이언트가 실제로 쓰는 컬럼만 명시적으로 나열한다.
   let query = supabaseAdmin
     .from("reviews")
-    .select("*", { count: "exact" })
+    .select(
+      "id, created_at, nickname, hustle_id, hustle_name, income_range, weekly_hours, difficulty, satisfaction, title, content, pros, cons, recommend, likes, proof_image_url, kakao_user_id",
+      { count: "exact" }
+    )
     .not("hustle_id", "like", "__hp__%")
     .order("created_at", { ascending: false });
 

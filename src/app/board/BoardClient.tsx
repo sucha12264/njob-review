@@ -89,7 +89,8 @@ export default function BoardClient() {
 
   const fetchPosts = useCallback(
     async (cat: Tab, pg: number, append = false) => {
-      append ? setLoadingMore(true) : setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       try {
         const params = new URLSearchParams({ page: String(pg) });
         if (cat !== "전체") params.set("category", cat);

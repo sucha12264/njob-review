@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { ALL_HUSTLES, type SideHustle } from "@/lib/hustleData";
 import { type HustleGuide } from "@/lib/hustleGuides";
 import { HUSTLE_PRODUCTS } from "@/lib/affiliateProducts";
@@ -31,18 +30,20 @@ const DIFFICULTY_BG = ["", "bg-green-100", "bg-green-100", "bg-amber-100", "bg-o
 interface Props {
   hustle: SideHustle;
   guide: HustleGuide | null;
+  /** 서버에서 미리 조회한 이 부업의 전체 후기 — 초기 HTML에 후기 본문을 포함시켜 색인 가능하게 만든다 */
+  initialReviews: Review[];
 }
 
-export default function HustlePageClient({ hustle, guide }: Props) {
+export default function HustlePageClient({ hustle, guide, initialReviews }: Props) {
   const id = hustle.id;
   const { reviews } = useStore();
 
-  const hustleReviews = reviews
-    .filter((r) => r.hustle_id === id)
-    .sort((a, b) => b.likes - a.likes)
-    .slice(0, 5);
+  // 스토어는 클라이언트에서 비동기로 채워지므로, 비어 있는 동안에는 서버가 넘겨준 후기를 그대로 쓴다.
+  // 이렇게 해야 서버 HTML과 하이드레이션 직후 화면에 후기 본문이 실제로 존재한다.
+  const storeReviews = reviews.filter((r) => r.hustle_id === id);
+  const allReviews = storeReviews.length > 0 ? storeReviews : initialReviews;
 
-  const allReviews = reviews.filter((r) => r.hustle_id === id);
+  const hustleReviews = [...allReviews].sort((a, b) => b.likes - a.likes);
   const avgSatisfaction = allReviews.length
     ? (allReviews.reduce((s, r) => s + r.satisfaction, 0) / allReviews.length).toFixed(1)
     : null;
@@ -325,14 +326,6 @@ export default function HustlePageClient({ hustle, guide }: Props) {
                   {hustleReviews.map((r) => (
                     <ReviewCard key={r.id} review={r} />
                   ))}
-                  {allReviews.length > 5 && (
-                    <Link
-                      href={`/write?hustle=${id}`}
-                      className="block text-center text-sm text-slate-400 hover:text-indigo-600 py-2 transition-colors"
-                    >
-                      전체 {allReviews.length}개 후기 보기 →
-                    </Link>
-                  )}
                 </div>
               )}
 

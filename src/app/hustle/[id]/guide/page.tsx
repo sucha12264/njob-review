@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { HUSTLE_MAP } from "@/lib/hustleData";
+import { HUSTLE_MAP, ALL_HUSTLES } from "@/lib/hustleData";
 import { HUSTLE_GUIDES } from "@/lib/hustleGuides";
 import { BASE_URL } from "@/lib/constants";
 
@@ -12,6 +12,14 @@ interface Props {
 const DIFFICULTY_LABEL = ["", "매우 쉬움", "쉬움", "보통", "어려움", "매우 어려움"];
 const DIFFICULTY_COLOR = ["", "text-green-600", "text-green-600", "text-amber-600", "text-orange-600", "text-red-600"];
 
+// 부업 64종은 ALL_HUSTLES에 정적으로 있으므로 빌드 시점에 전부 프리렌더한다.
+// generateStaticParams가 없으면 revalidate를 줘도 Next가 매 요청 렌더링(no-store)한다.
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return ALL_HUSTLES.map((h) => ({ id: h.id }));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const hustle = HUSTLE_MAP[id];
@@ -19,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const guide = HUSTLE_GUIDES[id] ?? null;
   const year = new Date().getFullYear();
-  const title = `${hustle.name} 시작하는 법 완벽 가이드 (${year}) | N잡 후기판`;
+  const title = `${hustle.name} 시작하는 법 완벽 가이드 (${year})`;
   const description = guide
     ? `${hustle.name} 수익화 방법 A to Z. 초기 비용 ${hustle.startupCost}, 예상 수익 ${hustle.incomeRange}. 단계별 시작 가이드, 실전 꿀팁 ${guide.tips.length}가지, 추천 플랫폼 정리.`
     : `${hustle.name} 시작하는 법. 예상 수익 ${hustle.incomeRange}, 난이도 ${DIFFICULTY_LABEL[hustle.difficulty]}, 초기 비용 ${hustle.startupCost}. N잡러 실전 가이드.`;
