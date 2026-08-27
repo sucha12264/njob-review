@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { rateLimit } from "@/lib/rateLimit";
 import { hashAnonPassword } from "@/lib/serverAuth";
+import { REVIEW_MIN_CONTENT } from "@/lib/reviewQuality";
 
 // GET /api/reviews — 후기 목록 (허니팟 제외, 페이지네이션 지원)
 // 쿼리 파라미터: page(기본 1), limit(기본 전체), hustle_id(선택)
@@ -104,8 +105,11 @@ export async function POST(req: NextRequest) {
     }
 
     const bodyContent = String(content ?? "").trim();
-    if (bodyContent.length < 20) {
-      return NextResponse.json({ error: "후기 내용은 20자 이상 입력해주세요" }, { status: 400 });
+    if (bodyContent.length < REVIEW_MIN_CONTENT) {
+      return NextResponse.json(
+        { error: `후기 내용은 ${REVIEW_MIN_CONTENT}자 이상 입력해주세요 (현재 ${bodyContent.length}자)` },
+        { status: 400 }
+      );
     }
 
     // 허니팟 hustle_id 삽입 방지

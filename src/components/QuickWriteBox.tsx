@@ -7,8 +7,13 @@ import { getStoredUser } from "@/lib/kakaoAuth";
 import { INCOME_LABELS, type IncomeRange, type ReviewInput } from "@/lib/types";
 import type { SideHustle } from "@/lib/hustleData";
 import { BASE_URL } from "@/lib/constants";
+import { REVIEW_MIN_CONTENT } from "@/lib/reviewQuality";
 
 const INCOME_RANGES = Object.keys(INCOME_LABELS) as IncomeRange[];
+
+const QUICK_PLACEHOLDER = `1. 어떻게 시작했나요?
+2. 수익은 실제로 어떻게 됐나요?
+3. 해보니 예상과 뭐가 달랐나요?`;
 const STAR_LABELS = ["별로예요", "그저 그래요", "보통이에요", "만족해요", "최고예요"];
 
 interface Props {
@@ -37,7 +42,7 @@ export default function QuickWriteBox({ hustle, existingCount }: Props) {
   }, []);
 
   const isValid =
-    nickname.trim() && satisfaction > 0 && incomeRange && content.trim().length >= 20;
+    nickname.trim() && satisfaction > 0 && incomeRange && content.trim().length >= REVIEW_MIN_CONTENT;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -352,17 +357,17 @@ function QuickForm({
 
       {/* 본문 */}
       <div>
-        <p className="text-xs font-semibold text-slate-600 mb-1.5">솔직한 후기 * <span className="font-normal text-slate-400">(최소 20자)</span></p>
+        <p className="text-xs font-semibold text-slate-600 mb-1.5">솔직한 후기 * <span className="font-normal text-slate-400">(최소 {REVIEW_MIN_CONTENT}자)</span></p>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="실제로 해보니 어땠나요? 수익은요? 어떤 분께 추천하나요?"
-          rows={3}
-          maxLength={500}
+          placeholder={QUICK_PLACEHOLDER}
+          rows={6}
+          maxLength={2000}
           className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none resize-none"
         />
-        {content.length > 0 && content.length < 20 && (
-          <p className="text-xs text-red-400 mt-0.5">{20 - content.length}자 더 필요해요</p>
+        {content.trim().length > 0 && content.trim().length < REVIEW_MIN_CONTENT && (
+          <p className="text-xs text-red-400 mt-0.5">{REVIEW_MIN_CONTENT - content.trim().length}자 더 필요해요</p>
         )}
       </div>
 

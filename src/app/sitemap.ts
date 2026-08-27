@@ -3,12 +3,13 @@ import { ALL_HUSTLES, CATEGORY_SLUG } from "@/lib/hustleData";
 import { COMPARE_PAIRS } from "@/lib/comparePairs";
 import { createClient } from "@supabase/supabase-js";
 import { BASE_URL, STATIC_CONTENT_UPDATED } from "@/lib/constants";
+import { isIndexableReview, REVIEW_INDEXABLE_CHARS } from "@/lib/reviewQuality";
 
 /**
- * 개별 후기 페이지(/review/[id])는 사이트맵에 넣지 않는다.
- * 후기 본문이 평균 100자 남짓이라 단독 페이지로는 색인 기준을 넘지 못하고,
- * 이런 URL이 사이트맵의 대부분을 차지하면 사이트 전체가 저품질로 평가된다.
- * 후기 콘텐츠는 /hustle/[id] 페이지에 모아서 노출한다.
+ * 개별 후기 페이지(/review/[id])는 분량이 REVIEW_INDEXABLE_CHARS를 넘긴 것만 넣는다.
+ * 짧은 후기까지 전부 넣으면 사이트맵의 대부분이 색인 거부될 URL로 채워져
+ * 사이트 전체가 저품질로 평가된다. (예전엔 764개 중 575개가 그런 URL이었다.)
+ * 기준 미달 후기의 내용은 /hustle/[id] 페이지에 모아서 노출한다.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const hustleUrls = ALL_HUSTLES.map((h) => ({
@@ -40,11 +41,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   let boardUrls: MetadataRoute.Sitemap = [];
+  let reviewUrls: MetadataRoute.Sitemap = [];
   try {
     const supabase = createClient(
       (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)!,
       (process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!
     );
+    // 분량 기준은 content+pros+cons 합계라 SQL로 거르기 어렵다 → 가져와서 걸러낸다.
+    const { data: reviews, error: reviewsError } = await supabase
+      .from("reviews")
+      .select("id, created_at, content, pros, cons")
+      .not("hustle_id", "like", "__hp__%")
+      .order("created_at", { ascending: false });
+
+    if (reviewsError) {
+      console.error("[sitemap] reviews 조회 실패:", reviewsError.message);
+    }
+
+    if (reviews) {
+      reviewUrls = reviews
+        .filter(isIndexableReview)
+        .map((r: { id: string; created_at: string }) => ({
+          url: `${BASE_URL}/review/${r.id}`,
+          lastModified: new Date(r.created_at),
+          changeFrequency: "monthly" as const,
+          priority: 0.6,
+        }));
+      console.log(
+        `[sitemap] 후기 ${reviews.length}건 중 ${reviewUrls.length}건이 ${REVIEW_INDEXABLE_CHARS}자 기준 통과`
+      );
+    }
+
     const { data: posts, error: postsError } = await supabase
       .from("posts")
       .select("id, created_at")
@@ -82,5 +109,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...hustleUrls,
     ...guideUrls,
     ...boardUrls,
+    ...reviewUrls,
   ];
 }

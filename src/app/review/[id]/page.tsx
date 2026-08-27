@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase.server";
 import { HUSTLE_MAP } from "@/lib/hustleData";
 import ReviewDetailClient from "./ReviewDetailClient";
 import { BASE_URL } from "@/lib/constants";
+import { isIndexableReview } from "@/lib/reviewQuality";
 
 export const revalidate = 3600;
 
@@ -15,13 +16,13 @@ export async function generateMetadata(
   try {
     const { data } = await supabaseAdmin
       .from("reviews")
-      .select("hustle_id, hustle_name, title, content, income_range")
+      .select("hustle_id, hustle_name, title, content, pros, cons, income_range")
       .eq("id", id)
       .single();
 
     if (!data) return { title: "후기를 찾을 수 없어요" };
 
-    const rev = data as Pick<Review, "hustle_name" | "title" | "content" | "income_range" | "hustle_id">;
+    const rev = data as Pick<Review, "hustle_name" | "title" | "content" | "pros" | "cons" | "income_range" | "hustle_id">;
 
     // 허니팟 페이지는 검색엔진 인덱싱 차단
     if (String(rev.hustle_id ?? "").startsWith("__hp__")) {
@@ -39,9 +40,9 @@ export async function generateMetadata(
       title: ogTitle,
       description: ogDesc,
       alternates: { canonical: ogUrl },
-      // 후기 본문은 평균 100자대로 단독 색인 기준에 못 미친다. 색인 대상에서 빼되
-      // follow는 유지해 부업 페이지로 링크 가치가 흐르게 한다. 카카오 공유 OG는 그대로 동작.
-      robots: { index: false, follow: true },
+      // 분량이 기준을 넘긴 후기만 색인한다. 짧은 후기는 색인에서 빼되 follow는 유지해
+      // 부업 페이지로 링크 가치가 흐르게 한다. 카카오 공유 OG는 어느 쪽이든 그대로 동작.
+      robots: { index: isIndexableReview(rev), follow: true },
       openGraph: {
         type: "article",
         title: ogTitle,

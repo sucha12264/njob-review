@@ -7,8 +7,17 @@ import { useStore } from "@/lib/store";
 import { getStoredUser } from "@/lib/kakaoAuth";
 import { ALL_HUSTLES, searchHustles, type SideHustle } from "@/lib/hustleData";
 import { INCOME_LABELS, type IncomeRange, type ReviewInput } from "@/lib/types";
+import { REVIEW_MIN_CONTENT, REVIEW_INDEXABLE_CHARS } from "@/lib/reviewQuality";
 
 const INCOME_RANGES = Object.keys(INCOME_LABELS) as IncomeRange[];
+
+// 열린 질문 하나("자유롭게 써주세요")로는 한 문장짜리 답만 돌아온다.
+// 답할 것을 구체적으로 쪼개 제시한다.
+const CONTENT_PLACEHOLDER = `이 세 가지를 답해주시면 충분해요.
+
+1. 어떻게 시작했나요? (계기 · 준비한 것 · 걸린 시간)
+2. 수익은 실제로 어떻게 됐나요? (첫 수익까지 · 지금은)
+3. 해보니 어땠나요? (예상과 달랐던 점 · 힘들었던 점)`;
 
 // ─── 별점 피커 ─────────────────────────────────────────
 const STAR_LABELS = ["별로예요", "그저 그래요", "보통이에요", "만족해요", "최고예요"];
@@ -206,13 +215,16 @@ function WritePageInner() {
     }
   }, []);
 
-  const isValid = selectedHustle && nickname.trim().length >= 2 && incomeRange && satisfaction > 0 && content.trim().length >= 20;
+  const contentLen = content.trim().length;
+  const isValid = selectedHustle && nickname.trim().length >= 2 && incomeRange && satisfaction > 0 && contentLen >= REVIEW_MIN_CONTENT;
+
+  // 후기 전체 분량 — 이 기준을 넘겨야 후기 페이지가 검색에 노출된다
+  const totalLen = contentLen + pros.trim().length + cons.trim().length;
+  const searchReady = totalLen >= REVIEW_INDEXABLE_CHARS;
 
   // 완성도 계산 (선택 항목 채울수록 올라감)
   const completeness = [
     !!title,
-    !!pros,
-    !!cons,
     difficulty !== 3,
     weeklyHours !== 5,
     !!proofImage,
@@ -433,15 +445,65 @@ function WritePageInner() {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="실제로 얼마나 했는지, 수익은 어떻게 됐는지, 어떤 점이 좋고 나빴는지 자유롭게 써주세요. (최소 20자)"
-              rows={5}
+              placeholder={CONTENT_PLACEHOLDER}
+              rows={9}
               maxLength={2000}
               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
             />
-            <p className={`text-xs text-right mt-1 ${content.length < 20 && content.length > 0 ? "text-red-400" : "text-slate-300"}`}>
-              {content.length}/2000{content.length < 20 && content.length > 0 ? ` (${20 - content.length}자 더 필요)` : ""}
+            <p className={`text-xs text-right mt-1 ${contentLen < REVIEW_MIN_CONTENT && contentLen > 0 ? "text-red-400" : "text-slate-300"}`}>
+              {contentLen < REVIEW_MIN_CONTENT
+                ? `${contentLen}/${REVIEW_MIN_CONTENT}자 (${REVIEW_MIN_CONTENT - contentLen}자 더 필요)`
+                : `${contentLen}/2000`}
             </p>
           </div>
+
+          {/* ⑥ 장점 — 예전엔 접힌 "선택 사항"에 있어서 대부분 비어 있었다 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">👍 좋았던 점</label>
+            <textarea
+              value={pros}
+              onChange={(e) => setPros(e.target.value)}
+              placeholder="다른 사람에게 이 부업을 권한다면 어떤 점 때문인가요?"
+              rows={3}
+              maxLength={500}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
+            />
+          </div>
+
+          {/* ⑦ 단점 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">👎 아쉬웠던 점</label>
+            <textarea
+              value={cons}
+              onChange={(e) => setCons(e.target.value)}
+              placeholder="시작하기 전에 알았더라면 좋았을 점은 무엇인가요?"
+              rows={3}
+              maxLength={500}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
+            />
+          </div>
+
+          {/* 분량 게이지 — 검색 노출 기준을 명시해 길게 쓸 이유를 만든다 */}
+          {contentLen > 0 && (
+            <div className={`rounded-xl px-4 py-3 border ${searchReady ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-200"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-bold ${searchReady ? "text-green-700" : "text-slate-500"}`}>
+                  {searchReady ? "✅ 검색에 노출되는 후기예요" : "📝 조금만 더 쓰면 검색에 노출돼요"}
+                </span>
+                <span className="text-xs text-slate-400">{totalLen}/{REVIEW_INDEXABLE_CHARS}자</span>
+              </div>
+              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${searchReady ? "bg-green-500" : "bg-indigo-400"}`}
+                  style={{ width: `${Math.min(100, (totalLen / REVIEW_INDEXABLE_CHARS) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                {REVIEW_INDEXABLE_CHARS}자를 넘으면 이 후기가 독립된 페이지로 검색에 올라가요.
+                짧은 후기는 부업 페이지 안에서만 보여요.
+              </p>
+            </div>
+          )}
 
           {/* ─── 선택 정보 ─── */}
           <div className="border border-dashed border-slate-200 rounded-xl overflow-hidden">
@@ -454,7 +516,7 @@ function WritePageInner() {
                 <span>➕ 더 자세히 작성하기</span>
                 {completeness > 0 && (
                   <span className="bg-indigo-100 text-indigo-600 text-xs font-bold px-1.5 py-0.5 rounded-full">
-                    {completeness}/6
+                    {completeness}/4
                   </span>
                 )}
               </span>
@@ -475,32 +537,6 @@ function WritePageInner() {
                     placeholder={selectedHustle ? `예: ${selectedHustle.name} 3개월 후기` : "후기 제목"}
                     maxLength={60}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  />
-                </div>
-
-                {/* 장점 */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">👍 장점</label>
-                  <textarea
-                    value={pros}
-                    onChange={(e) => setPros(e.target.value)}
-                    placeholder="이 부업의 좋은 점"
-                    rows={2}
-                    maxLength={300}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none resize-none"
-                  />
-                </div>
-
-                {/* 단점 */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">👎 단점</label>
-                  <textarea
-                    value={cons}
-                    onChange={(e) => setCons(e.target.value)}
-                    placeholder="이 부업의 아쉬운 점"
-                    rows={2}
-                    maxLength={300}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none resize-none"
                   />
                 </div>
 
