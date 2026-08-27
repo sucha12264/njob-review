@@ -11,7 +11,7 @@ export async function GET(
 
   const { data, error } = await supabaseAdmin
     .from("hustle_answers")
-    .select("*")
+    .select("id, created_at, question_id, nickname, content, is_best")
     .eq("question_id", id)
     .order("is_best", { ascending: false })   // 채택 답변 최상단
     .order("created_at", { ascending: true });

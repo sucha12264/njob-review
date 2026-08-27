@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabaseAdmin
     .from("posts")
-    .select("*", { count: "exact" })
+    .select("id, created_at, nickname, title, content, category, views, likes, comment_count", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

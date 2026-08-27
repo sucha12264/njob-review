@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getStoredUser } from "@/lib/kakaoAuth";
 import type { HustleQuestion, HustleAnswer } from "@/lib/types";
+import { useMyIdSet } from "@/lib/myContent";
 
 /* ─── 날짜 포맷 ────────────────────────────────────────── */
 function timeAgo(dateStr: string) {
@@ -27,6 +28,7 @@ function AnswerSection({
   kakaoUserId: string | null;
   kakaoNickname: string;
 }) {
+  const myAnswerIds                 = useMyIdSet("answerIds");
   const [answers, setAnswers]       = useState<HustleAnswer[]>([]);
   const [loading, setLoading]       = useState(true);
   const [content, setContent]       = useState("");
@@ -102,7 +104,7 @@ function AnswerSection({
               <span className="font-semibold text-slate-700 text-xs">{a.nickname}</span>
               <span className="text-slate-300 text-[10px]">·</span>
               <span className="text-slate-400 text-[10px]">{timeAgo(a.created_at)}</span>
-              {kakaoUserId && a.kakao_user_id === kakaoUserId && (
+              {myAnswerIds.has(a.id) && (
                 <button
                   onClick={() => handleDelete(a.id)}
                   className="ml-auto text-[10px] text-slate-300 hover:text-red-400 transition-colors"
@@ -163,6 +165,7 @@ function QuestionCard({
   kakaoNickname: string;
   onDelete: (id: string) => void;
 }) {
+  const myQuestionIds = useMyIdSet("questionIds");
   const [expanded, setExpanded] = useState(false);
 
   async function handleDelete() {
@@ -183,7 +186,7 @@ function QuestionCard({
             <span className="font-semibold text-slate-700 text-sm">{question.nickname}</span>
             <span className="text-slate-300 text-xs">·</span>
             <span className="text-slate-400 text-xs">{timeAgo(question.created_at)}</span>
-            {kakaoUserId && question.kakao_user_id === kakaoUserId && (
+            {myQuestionIds.has(question.id) && (
               <button
                 onClick={handleDelete}
                 className="ml-auto text-[10px] text-slate-300 hover:text-red-400 transition-colors"

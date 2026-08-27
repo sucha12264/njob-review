@@ -72,7 +72,13 @@ export async function generateMetadata(
 
 export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { data } = await supabaseAdmin.from("reviews").select("*").eq("id", id).single();
+  // select("*")는 anon_ip / anon_password_hash / kakao_user_id 까지 클라이언트 컴포넌트
+  // props로 흘러가 페이지 HTML에 그대로 박힌다. 화면에 필요한 컬럼만 가져온다.
+  const { data } = await supabaseAdmin
+    .from("reviews")
+    .select("id, created_at, nickname, hustle_id, hustle_name, income_range, weekly_hours, difficulty, satisfaction, title, content, pros, cons, recommend, likes, proof_image_url")
+    .eq("id", id)
+    .single();
   if (!data) return notFound();
 
   const review = data as Review;

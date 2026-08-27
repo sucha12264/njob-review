@@ -198,7 +198,8 @@ export default function CompareClient({ initialA = "youtube", initialB = "tiktok
   const hustleB = useMemo(() => HUSTLE_MAP[idB], [idB]);
 
   function shareUrl() {
-    const url = `${window.location.origin}/compare?a=${idA}&b=${idB}`;
+    // 공유는 정본 URL로 — 쿼리 URL을 퍼뜨리면 중복 페이지가 함께 퍼진다
+    const url = `${window.location.origin}/compare/${idA}-vs-${idB}`;
     navigator.clipboard.writeText(url).catch(() => {});
   }
 

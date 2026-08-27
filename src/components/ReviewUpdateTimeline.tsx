@@ -9,6 +9,7 @@ import {
   UPDATE_MONTH_LABELS,
 } from "@/lib/types";
 import type { ReviewUpdate, IncomeRange, UpdateMonths } from "@/lib/types";
+import { useIsMine } from "@/lib/myContent";
 
 /** 두 income_range 사이 방향 아이콘 */
 function IncomeArrow({ from, to }: { from: string; to: string }) {
@@ -162,14 +163,12 @@ function AddUpdateForm({
 /* ─── 메인 컴포넌트 ─────────────────────────────────────── */
 interface Props {
   reviewId: string;
-  reviewKakaoUserId: string | null | undefined;
   originalIncome: IncomeRange;
   originalNickname: string;
 }
 
 export default function ReviewUpdateTimeline({
   reviewId,
-  reviewKakaoUserId,
   originalIncome,
   originalNickname,
 }: Props) {
@@ -185,14 +184,17 @@ export default function ReviewUpdateTimeline({
     setLoading(false);
   }, [reviewId]);
 
+  const mine = useIsMine("reviewIds", reviewId);
+
   useEffect(() => {
     load();
-    const user = getStoredUser();
-    if (user && reviewKakaoUserId && String(user.id) === reviewKakaoUserId) {
-      setIsOwner(true);
-      setNickname(user.nickname ?? originalNickname);
-    }
-  }, [load, reviewKakaoUserId, originalNickname]);
+  }, [load]);
+
+  useEffect(() => {
+    if (!mine) return;
+    setIsOwner(true);
+    setNickname(getStoredUser()?.nickname ?? originalNickname);
+  }, [mine, originalNickname]);
 
   function handleAdded(u: ReviewUpdate) {
     setUpdates((prev) =>

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error, count } = await supabaseAdmin
     .from("hustle_questions")
-    .select("*", { count: "exact" })
+    .select("id, created_at, hustle_id, nickname, content, answer_count", { count: "exact" })
     .eq("hustle_id", hustle_id)
     .order("created_at", { ascending: false })
     .range(from, to);

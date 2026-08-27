@@ -46,7 +46,7 @@ export default async function PostPage({
   const { id } = await params;
   const { data } = await supabaseAdmin
     .from("posts")
-    .select("*")
+    .select("id, created_at, nickname, title, content, category, views, likes, comment_count")
     .eq("id", id)
     .single();
 

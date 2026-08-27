@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { INCOME_LABELS, INCOME_COLORS } from "@/lib/types";
 import type { Review } from "@/lib/types";
-import { getStoredUser, initKakao } from "@/lib/kakaoAuth";
+import { initKakao } from "@/lib/kakaoAuth";
+import { useIsMine } from "@/lib/myContent";
 import ShareButtons from "@/components/ShareButtons";
 import Comments from "@/components/Comments";
 import ReviewUpdateTimeline from "@/components/ReviewUpdateTimeline";
@@ -289,15 +290,8 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
   // 이 부업이 포함된 비교 조합 찾기
   const comparePair = COMPARE_PAIRS.find((p) => p.a === review.hustle_id || p.b === review.hustle_id);
   const isLiked = likedIds.has(review.id);
-  const [isOwner, setIsOwner] = useState(false);
+  const isOwner = useIsMine("reviewIds", review.id);
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    const user = getStoredUser();
-    if (user && review.kakao_user_id && String(user.id) === review.kakao_user_id) {
-      setIsOwner(true);
-    }
-  }, [review.kakao_user_id]);
 
   async function handleDelete() {
     if (!confirm("내 후기를 삭제할까요? 되돌릴 수 없습니다.")) return;
@@ -400,7 +394,6 @@ export default function ReviewDetailClient({ review }: { review: Review }) {
         {/* 수익 업데이트 타임라인 */}
         <ReviewUpdateTimeline
           reviewId={review.id}
-          reviewKakaoUserId={review.kakao_user_id}
           originalIncome={review.income_range}
           originalNickname={review.nickname}
         />

@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   let query = supabaseAdmin
     .from("reviews")
     .select(
-      "id, created_at, nickname, hustle_id, hustle_name, income_range, weekly_hours, difficulty, satisfaction, title, content, pros, cons, recommend, likes, proof_image_url, kakao_user_id",
+      "id, created_at, nickname, hustle_id, hustle_name, income_range, weekly_hours, difficulty, satisfaction, title, content, pros, cons, recommend, likes, proof_image_url",
       { count: "exact" }
     )
     .not("hustle_id", "like", "__hp__%")

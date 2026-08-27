@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Post, PostComment, BoardCategory } from "@/lib/types";
 import { BOARD_CATEGORY_COLORS, BOARD_CATEGORY_EMOJI } from "@/lib/types";
 import { getStoredUser } from "@/lib/kakaoAuth";
+import { useIsMine } from "@/lib/myContent";
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -171,7 +172,7 @@ export default function PostDetailClient({ post }: { post: Post }) {
   const [likes, setLikes] = useState(post.likes);
   const [liked, setLiked] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
+  const isOwner = useIsMine("postIds", post.id);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -179,12 +180,7 @@ export default function PostDetailClient({ post }: { post: Post }) {
     fetch(`/api/posts/${post.id}/view`, { method: "POST" }).catch(() => {});
     // 좋아요 상태
     setLiked(!!localStorage.getItem(`post_liked_${post.id}`));
-    // 작성자 확인
-    const user = getStoredUser();
-    if (user && post.kakao_user_id && String(user.id) === post.kakao_user_id) {
-      setIsOwner(true);
-    }
-  }, [post.id, post.kakao_user_id]);
+  }, [post.id]);
 
   async function handleLike() {
     const key = `post_liked_${post.id}`;

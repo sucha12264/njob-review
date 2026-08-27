@@ -18,8 +18,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     return {
       title,
       description,
-      openGraph: { title, description, url: `${BASE_URL}/compare?a=${a}&b=${b}` },
-      alternates: { canonical: `${BASE_URL}/compare?a=${a}&b=${b}` },
+      // 같은 비교가 /compare/[slug]에도 존재한다. 쿼리 URL이 자기 자신을 canonical로
+      // 선언하면 두 URL이 같은 주제로 경쟁하므로, 정본인 슬러그 페이지를 가리킨다.
+      openGraph: { title, description, url: `${BASE_URL}/compare/${a}-vs-${b}` },
+      alternates: { canonical: `${BASE_URL}/compare/${a}-vs-${b}` },
     };
   }
 

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   const { data: reviews, error: reviewsError } = await supabaseAdmin
     .from("reviews")
-    .select("*")
+    .select("id, created_at, nickname, hustle_id, hustle_name, income_range, weekly_hours, difficulty, satisfaction, title, content, pros, cons, recommend, likes, proof_image_url")
     .in("id", reviewIds)
     .not("hustle_id", "like", "__hp__%");
 

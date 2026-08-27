@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("reviews")
-    .select("*")
+    .select("id, created_at, nickname, hustle_id, hustle_name, income_range, weekly_hours, difficulty, satisfaction, title, content, pros, cons, recommend, likes, proof_image_url")
     .eq("kakao_user_id", authUserId)
     .not("hustle_id", "like", "__hp__%")
     .order("created_at", { ascending: false });
