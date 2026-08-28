@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("review_updates")
-    .select("*")
+    // select("*")는 이 테이블의 kakao_user_id까지 공개 응답에 싣는다
+    .select("id, created_at, review_id, nickname, months_elapsed, income_range, content")
     .eq("review_id", review_id)
     .order("months_elapsed", { ascending: true });
 

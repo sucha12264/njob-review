@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("comments")
-    .select("*")
+    // 컬럼이 추가돼도 자동으로 노출되지 않도록 명시적으로 나열한다
+    .select("id, created_at, review_id, nickname, content")
     .eq("review_id", reviewId)
     .order("created_at", { ascending: true });
 

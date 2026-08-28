@@ -9,7 +9,8 @@ export async function GET(
   const { id } = await params;
   const { data, error } = await supabaseAdmin
     .from("posts")
-    .select("*")
+    // select("*")는 이 테이블의 kakao_user_id까지 공개 응답에 싣는다
+    .select("id, created_at, nickname, title, content, category, views, likes, comment_count")
     .eq("id", id)
     .single();
 
