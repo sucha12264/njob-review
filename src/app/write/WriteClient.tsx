@@ -1,0 +1,661 @@
+"use client";
+
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useStore } from "@/lib/store";
+import { getStoredUser } from "@/lib/kakaoAuth";
+import { ALL_HUSTLES, searchHustles, type SideHustle } from "@/lib/hustleData";
+import { INCOME_LABELS, type IncomeRange, type ReviewInput } from "@/lib/types";
+import { REVIEW_MIN_CONTENT, REVIEW_INDEXABLE_CHARS } from "@/lib/reviewQuality";
+
+const INCOME_RANGES = Object.keys(INCOME_LABELS) as IncomeRange[];
+
+// 열린 질문 하나("자유롭게 써주세요")로는 한 문장짜리 답만 돌아온다.
+// 답할 것을 구체적으로 쪼개 제시한다.
+const CONTENT_PLACEHOLDER = `이 세 가지를 답해주시면 충분해요.
+
+1. 어떻게 시작했나요? (계기 · 준비한 것 · 걸린 시간)
+2. 수익은 실제로 어떻게 됐나요? (첫 수익까지 · 지금은)
+3. 해보니 어땠나요? (예상과 달랐던 점 · 힘들었던 점)`;
+
+// ─── 별점 피커 ─────────────────────────────────────────
+const STAR_LABELS = ["별로예요", "그저 그래요", "보통이에요", "만족해요", "최고예요"];
+
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hover, setHover] = useState(0);
+  const active = hover || value;
+  return (
+    <div className="flex items-center gap-3">
+      <div role="radiogroup" aria-label="만족도 별점" className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={n === value}
+            aria-label={`${n}점 — ${STAR_LABELS[n - 1]}`}
+            onClick={() => onChange(n)}
+            onMouseEnter={() => setHover(n)}
+            onMouseLeave={() => setHover(0)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); onChange(Math.min(5, value + 1)); }
+              if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); onChange(Math.max(1, value > 0 ? value - 1 : 1)); }
+            }}
+            className={`text-3xl transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 rounded ${n <= active ? "text-amber-400" : "text-slate-200"}`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      {active > 0 && (
+        <span className="text-sm font-medium text-slate-600">{STAR_LABELS[active - 1]}</span>
+      )}
+    </div>
+  );
+}
+
+// ─── 부업 검색 피커 ────────────────────────────────────
+function HustleSearchPicker({
+  selected,
+  onSelect,
+}: {
+  selected: SideHustle | null;
+  onSelect: (h: SideHustle | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const results = searchHustles(query).slice(0, 8);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  if (selected) {
+    return (
+      <div className="flex items-center gap-3 p-3 border-2 border-indigo-400 bg-indigo-50 rounded-xl">
+        <span className="text-2xl">{selected.emoji}</span>
+        <div className="flex-1">
+          <p className="font-semibold text-indigo-700">{selected.name}</p>
+          <p className="text-xs text-slate-400">{selected.category}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setQuery(""); onSelect(null); }}
+          className="text-xs text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded"
+        >
+          변경
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative">
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="부업 이름 검색... (예: 쿠팡파트너스, 크몽)"
+          className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-56 overflow-y-auto">
+          {results.length === 0 ? (
+            <div className="p-4 text-center text-sm text-slate-400">검색 결과가 없어요</div>
+          ) : (
+            results.map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => { onSelect(h); setOpen(false); setQuery(""); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 transition-colors text-left"
+              >
+                <span className="text-xl flex-shrink-0">{h.emoji}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-slate-700 truncate">{h.name}</p>
+                  <p className="text-xs text-slate-400">{h.category} · {h.incomeRange}</p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+      {!query && (
+        <div className="mt-3">
+          <p className="text-xs text-slate-400 mb-2">🔥 인기 부업</p>
+          <div className="flex flex-wrap gap-2">
+            {ALL_HUSTLES.filter((h) => h.isHot).slice(0, 6).map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => onSelect(h)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-slate-600 rounded-full transition-colors"
+              >
+                {h.emoji} {h.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 진행 단계 표시 ────────────────────────────────────
+function ProgressBar({ step, total }: { step: number; total: number }) {
+  return (
+    <div className="flex gap-1.5 mb-6">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1 flex-1 rounded-full transition-all ${
+            i < step ? "bg-indigo-600" : "bg-slate-200"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── 메인 폼 ───────────────────────────────────────────
+function WritePageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { addReview } = useStore();
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [selectedHustle, setSelectedHustle] = useState<SideHustle | null>(null);
+
+  // 카카오 로그인 여부
+  const [isKakaoUser, setIsKakaoUser] = useState(false);
+
+  // 핵심 필드
+  const [nickname, setNickname] = useState("");
+  const [anonPassword, setAnonPassword] = useState("");
+  const [incomeRange, setIncomeRange] = useState<IncomeRange | "">("");
+  const [satisfaction, setSatisfaction] = useState(0);
+  const [content, setContent] = useState("");
+
+  // 선택 필드
+  const [showExtra, setShowExtra] = useState(false);
+  const [title, setTitle] = useState("");
+  const [pros, setPros] = useState("");
+  const [cons, setCons] = useState("");
+  const [difficulty, setDifficulty] = useState(3);
+  const [weeklyHours, setWeeklyHours] = useState(5);
+  const [proofImage, setProofImage] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState("");
+
+  // URL 파라미터로 미리 선택
+  useEffect(() => {
+    const hustleId = searchParams.get("hustle");
+    if (hustleId) {
+      const found = ALL_HUSTLES.find((h) => h.id === hustleId);
+      if (found) setSelectedHustle(found);
+    }
+  }, [searchParams]);
+
+  // 카카오 로그인 닉네임 자동 입력 + 로그인 상태 체크
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user?.nickname) {
+      setNickname(user.nickname);
+      setIsKakaoUser(true);
+    }
+  }, []);
+
+  const contentLen = content.trim().length;
+  const isValid = selectedHustle && nickname.trim().length >= 2 && incomeRange && satisfaction > 0 && contentLen >= REVIEW_MIN_CONTENT;
+
+  // 후기 전체 분량 — 이 기준을 넘겨야 후기 페이지가 검색에 노출된다
+  const totalLen = contentLen + pros.trim().length + cons.trim().length;
+  const searchReady = totalLen >= REVIEW_INDEXABLE_CHARS;
+
+  // 완성도 계산 (선택 항목 채울수록 올라감)
+  const completeness = [
+    !!title,
+    difficulty !== 3,
+    weeklyHours !== 5,
+    !!proofImage,
+  ].filter(Boolean).length;
+
+  // Object URL 메모리 누수 방지 — proofPreview 변경/언마운트 시 해제
+  useEffect(() => {
+    const url = proofPreview;
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [proofPreview]);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("이미지는 5MB 이하만 업로드 가능해요.");
+      return;
+    }
+    setUploadError("");
+    setProofImage(file);
+    setProofPreview(URL.createObjectURL(file));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isValid || !selectedHustle) return;
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const kakaoUser = getStoredUser();
+
+      let proofImageUrl: string | null = null;
+      if (proofImage) {
+        try {
+          const fd = new FormData();
+          fd.append("file", proofImage);
+          if (kakaoUser) fd.append("kakao_user_id", String(kakaoUser.id));
+          const res = await fetch("/api/upload", { method: "POST", body: fd });
+          const json = await res.json();
+          if (json.url) proofImageUrl = json.url;
+        } catch { /* 업로드 실패 무시 — 후기는 계속 제출 */ }
+      }
+      const payload = {
+        nickname: nickname.trim(),
+        hustle_id: selectedHustle.id,
+        hustle_name: selectedHustle.name,
+        income_range: incomeRange as IncomeRange,
+        weekly_hours: weeklyHours,
+        difficulty: difficulty as ReviewInput["difficulty"],
+        satisfaction: satisfaction as ReviewInput["satisfaction"],
+        title: title.trim() || `${selectedHustle.name} 후기`,
+        content: content.trim(),
+        pros: pros.trim(),
+        cons: cons.trim(),
+        recommend: satisfaction >= 4,
+        proof_image_url: proofImageUrl,
+        kakao_user_id: kakaoUser ? String(kakaoUser.id) : null,
+        // 익명 작성 시 비밀번호 (선택, 4자 이상일 때만 전송)
+        anon_password: !kakaoUser && anonPassword.length >= 4 ? anonPassword : undefined,
+      };
+
+      const review = await addReview(payload as ReviewInput & { kakao_user_id: string | null; anon_password?: string });
+
+      // 익명+비밀번호 작성 시 로컬스토리지에 저장 (나중에 내 후기 삭제용)
+      if (!kakaoUser && anonPassword.length >= 4) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("njob_anon_reviews") ?? "[]") as Array<{ id: string; pw: string }>;
+          stored.push({ id: review.id, pw: anonPassword });
+          localStorage.setItem("njob_anon_reviews", JSON.stringify(stored.slice(-20))); // 최대 20개 보관
+        } catch { /* 무시 */ }
+      }
+
+      router.push(`/review/${review.id}?new=1`);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "후기 등록에 실패했어요. 다시 시도해주세요.");
+      setSubmitting(false);
+    }
+  }
+
+  // 현재 진행 단계 (필수 항목 기준)
+  const filledSteps = [!!selectedHustle, !!incomeRange, satisfaction > 0, content.trim().length >= 20].filter(Boolean).length;
+
+  return (
+    <div className="max-w-xl mx-auto px-4 py-6 sm:py-8 animate-fade-in">
+      <Link href="/" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-600 mb-6 transition-colors">
+        ← 목록으로
+      </Link>
+
+      <div className="card p-6 sm:p-8">
+        <h1 className="text-2xl font-black text-slate-800 mb-1">✏️ 후기 작성</h1>
+        <p className="text-slate-400 text-sm mb-5">솔직한 경험이 다른 N잡러에게 큰 도움이 됩니다</p>
+
+        {/* 진행 바 */}
+        <ProgressBar step={filledSteps} total={4} />
+
+        <form onSubmit={handleSubmit} className="space-y-7">
+
+          {/* ① 부업 선택 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              어떤 부업인가요? <span className="text-red-400">*</span>
+            </label>
+            <HustleSearchPicker selected={selectedHustle} onSelect={setSelectedHustle} />
+          </div>
+
+          {/* ② 닉네임 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              닉네임 <span className="text-red-400">*</span>
+              <span className="ml-2 text-xs font-normal text-slate-400">공개됩니다</span>
+            </label>
+            {isKakaoUser ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <span className="text-base">🟡</span>
+                <span className="text-sm font-semibold text-yellow-800">{nickname}</span>
+                <span className="ml-auto text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full">카카오 로그인</span>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder="예: 직장인A, 퇴근후N잡러"
+                    maxLength={20}
+                    className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                      nickname.trim().length > 0 && nickname.trim().length < 2
+                        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                        : "border-slate-200 focus:border-indigo-400 focus:ring-indigo-100"
+                    }`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-300">
+                    {nickname.length}/20
+                  </span>
+                </div>
+                {nickname.trim().length > 0 && nickname.trim().length < 2 ? (
+                  <p className="text-xs text-red-400 mt-1">닉네임은 2자 이상 입력해주세요</p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-1">실명 없이 자유롭게 설정 가능해요 (최대 20자)</p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* ② 익명 후기 비밀번호 (카카오 미로그인 시) */}
+          {!isKakaoUser && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-base mt-0.5">🔒</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">익명 작성 중</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    비밀번호를 설정하면 나중에 내 후기를 직접 삭제할 수 있어요.
+                    IP는 어뷰징 방지 목적으로만 저장되며 외부에 공개되지 않습니다.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  삭제용 비밀번호 <span className="text-slate-400 font-normal">(선택, 4자 이상)</span>
+                </label>
+                <input
+                  type="password"
+                  value={anonPassword}
+                  onChange={(e) => setAnonPassword(e.target.value)}
+                  placeholder="비밀번호 미설정 시 삭제 불가"
+                  maxLength={30}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white"
+                />
+                {anonPassword.length > 0 && anonPassword.length < 4 && (
+                  <p className="text-xs text-amber-500 mt-1">4자 이상 입력해주세요</p>
+                )}
+                {anonPassword.length >= 4 && (
+                  <p className="text-xs text-green-600 mt-1">✓ 비밀번호 설정됨 — 후기 삭제 가능</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ③ 월 수익 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              월 평균 수익 <span className="text-red-400">*</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {INCOME_RANGES.map((range) => (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setIncomeRange(range)}
+                  className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
+                    incomeRange === range
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                      : "border-slate-200 text-slate-600 hover:border-indigo-300"
+                  }`}
+                >
+                  {INCOME_LABELS[range]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ④ 만족도 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              만족도 <span className="text-red-400">*</span>
+            </label>
+            <StarPicker value={satisfaction} onChange={setSatisfaction} />
+          </div>
+
+          {/* ⑤ 후기 본문 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              솔직한 후기 <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder={CONTENT_PLACEHOLDER}
+              rows={9}
+              maxLength={2000}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
+            />
+            <p className={`text-xs text-right mt-1 ${contentLen < REVIEW_MIN_CONTENT && contentLen > 0 ? "text-red-400" : "text-slate-300"}`}>
+              {contentLen < REVIEW_MIN_CONTENT
+                ? `${contentLen}/${REVIEW_MIN_CONTENT}자 (${REVIEW_MIN_CONTENT - contentLen}자 더 필요)`
+                : `${contentLen}/2000`}
+            </p>
+          </div>
+
+          {/* ⑥ 장점 — 예전엔 접힌 "선택 사항"에 있어서 대부분 비어 있었다 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">👍 좋았던 점</label>
+            <textarea
+              value={pros}
+              onChange={(e) => setPros(e.target.value)}
+              placeholder="다른 사람에게 이 부업을 권한다면 어떤 점 때문인가요?"
+              rows={3}
+              maxLength={500}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
+            />
+          </div>
+
+          {/* ⑦ 단점 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">👎 아쉬웠던 점</label>
+            <textarea
+              value={cons}
+              onChange={(e) => setCons(e.target.value)}
+              placeholder="시작하기 전에 알았더라면 좋았을 점은 무엇인가요?"
+              rows={3}
+              maxLength={500}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
+            />
+          </div>
+
+          {/* 분량 게이지 — 검색 노출 기준을 명시해 길게 쓸 이유를 만든다 */}
+          {contentLen > 0 && (
+            <div className={`rounded-xl px-4 py-3 border ${searchReady ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-200"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-bold ${searchReady ? "text-green-700" : "text-slate-500"}`}>
+                  {searchReady ? "✅ 검색에 노출되는 후기예요" : "📝 조금만 더 쓰면 검색에 노출돼요"}
+                </span>
+                <span className="text-xs text-slate-400">{totalLen}/{REVIEW_INDEXABLE_CHARS}자</span>
+              </div>
+              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${searchReady ? "bg-green-500" : "bg-indigo-400"}`}
+                  style={{ width: `${Math.min(100, (totalLen / REVIEW_INDEXABLE_CHARS) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                {REVIEW_INDEXABLE_CHARS}자를 넘으면 이 후기가 독립된 페이지로 검색에 올라가요.
+                짧은 후기는 부업 페이지 안에서만 보여요.
+              </p>
+            </div>
+          )}
+
+          {/* ─── 선택 정보 ─── */}
+          <div className="border border-dashed border-slate-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowExtra((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span>➕ 더 자세히 작성하기</span>
+                {completeness > 0 && (
+                  <span className="bg-indigo-100 text-indigo-600 text-xs font-bold px-1.5 py-0.5 rounded-full">
+                    {completeness}/4
+                  </span>
+                )}
+              </span>
+              <span className="text-slate-400 text-lg leading-none">{showExtra ? "−" : "+"}</span>
+            </button>
+
+            {showExtra && (
+              <div className="px-4 pb-5 pt-1 space-y-5 border-t border-slate-100">
+                <p className="text-xs text-slate-400">선택 사항이에요. 채울수록 후기의 신뢰도가 높아져요.</p>
+
+                {/* 제목 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">제목</label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={selectedHustle ? `예: ${selectedHustle.name} 3개월 후기` : "후기 제목"}
+                    maxLength={60}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                  />
+                </div>
+
+                {/* 난이도 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">난이도</label>
+                  <div className="flex gap-1.5">
+                    {(["매우 쉬움", "쉬움", "보통", "어려움", "매우 어려움"] as const).map((label, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setDifficulty(i + 1)}
+                        className={`flex-1 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
+                          difficulty === i + 1
+                            ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                            : "border-slate-200 text-slate-400 hover:border-indigo-300"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 주 투자 시간 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                    주 투자 시간: <span className="text-indigo-600 font-bold">{weeklyHours}시간</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={40}
+                    value={weeklyHours}
+                    onChange={(e) => setWeeklyHours(Number(e.target.value))}
+                    className="w-full accent-indigo-600"
+                  />
+                  <div className="flex justify-between text-xs text-slate-300 mt-0.5">
+                    <span>1시간</span>
+                    <span>40시간</span>
+                  </div>
+                </div>
+
+                {/* 수익 인증 이미지 */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    📸 수익 인증 이미지
+                  </label>
+                  <p className="text-xs text-slate-400 mb-2">수익 캡처, 정산 내역 등을 첨부하면 신뢰도가 높아져요.</p>
+                  {proofPreview ? (
+                    <div className="relative inline-block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={proofPreview} alt="수익 인증" className="max-h-40 rounded-xl border border-slate-200 object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => { setProofImage(null); setProofPreview(null); }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors">
+                      <span className="text-xl mb-0.5">📷</span>
+                      <span className="text-xs text-slate-400">클릭해서 업로드</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                    </label>
+                  )}
+                  {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 제출 */}
+          <button
+            type="submit"
+            disabled={!isValid || submitting}
+            className="w-full btn-primary py-3.5 text-base font-bold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                등록 중...
+              </>
+            ) : (
+              "후기 등록하기 →"
+            )}
+          </button>
+
+          {submitError && (
+            <p className="text-sm text-center text-red-500 bg-red-50 rounded-xl px-4 py-3 -mt-3">
+              ⚠️ {submitError}
+            </p>
+          )}
+
+          {!isValid && (nickname || incomeRange || satisfaction || content) && (
+            <p className="text-xs text-center text-slate-400 -mt-3">
+              {!selectedHustle ? "부업을 선택해주세요" :
+               !incomeRange ? "월 수익을 선택해주세요" :
+               satisfaction === 0 ? "만족도를 선택해주세요" :
+               content.trim().length < 20 ? `후기를 ${20 - content.trim().length}자 더 써주세요` : ""}
+            </p>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function WriteClient() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-xl mx-auto px-4 py-10 animate-pulse">
+        <div className="h-8 w-48 bg-slate-100 rounded mb-6" />
+        <div className="h-96 bg-slate-50 rounded-2xl" />
+      </div>
+    }>
+      <WritePageInner />
+    </Suspense>
+  );
+}
