@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "tsx --test tests/reviewQuality.test.ts tests/postQuality.test.ts tests/apiOrigin.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",

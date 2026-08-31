@@ -10,7 +10,7 @@ Stack          : Next.js 16 (App Router) / TypeScript 5 / Supabase (PostgreSQL) 
                  Anthropic Claude API (AI 요약) / Kakao OAuth / Framer Motion
 Package Manager: npm
 Node Version   : 20.x (@types/node ^20)
-Test Runner    : [미입력] — 테스트 없음 (수동 검증)
+Test Runner    : node:test + tsx (npm test) — tests/ 에 핵심 로직 스모크 테스트
 Lint/Format    : ESLint (eslint-config-next 15.3.1) — Prettier 미설정
 Deploy Target  : Vercel (Production: https://njob-review.vercel.app)
 Base URL       : 도메인 변경 시 src/lib/constants.ts 의 BASE_URL 하나만 수정
@@ -25,6 +25,7 @@ lint   : npm run lint       # ESLint
 start  : npm run start      # 빌드 후 프로덕션 서버
 deploy : npx vercel --prod  # Vercel 수동 배포 (git push main → 자동 배포)
 tsc    : npx tsc --noEmit   # 타입 검사만 (빌드 없이)
+test   : npm test            # 색인 게이트·API 오리진 판별 스모크 테스트 (node:test)
 batch  : npx tsx scripts/generate-all-summaries.ts  # AI 요약 일괄 생성
 ```
 
@@ -238,7 +239,7 @@ ValidationError → 필드별 구체적 피드백
 - **어드민 인증**: JWT/세션 없이 단순 헤더(`x-admin-password`) 방식 사용
 
 ### 알려진 기술 부채
-- 테스트 코드 전무 — E2E나 단위 테스트 도입 필요
+- 테스트: tests/에 핵심 로직(색인 게이트, API 오리진) 스모크만 있음 — E2E는 미도입
 - `src/lib/mockData.ts` — 삭제 완료
 - PowerShell에서 한글 git commit 메시지 인코딩 오류 → **영문 커밋 메시지** 사용
 
