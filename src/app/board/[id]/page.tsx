@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Post } from "@/lib/types";
 import PostDetailClient from "./PostDetailClient";
 import { BASE_URL } from "@/lib/constants";
+import { isIndexablePost } from "@/lib/postQuality";
 
 // ISR — 매 요청 Supabase 왕복 대신 CDN 캐시를 태운다
 export const revalidate = 3600;
@@ -27,6 +28,8 @@ export async function generateMetadata({
     title: data.title as string,
     description: desc,
     alternates: { canonical: `${BASE_URL}/board/${id}` },
+    // 분량 기준을 넘긴 글만 색인한다 — 후기(review/[id])와 같은 정책
+    robots: { index: isIndexablePost(data), follow: true },
     openGraph: {
       title: data.title as string,
       description: desc,

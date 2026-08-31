@@ -4,6 +4,7 @@ import { COMPARE_PAIRS } from "@/lib/comparePairs";
 import { createClient } from "@supabase/supabase-js";
 import { BASE_URL, STATIC_CONTENT_UPDATED } from "@/lib/constants";
 import { isIndexableReview, REVIEW_INDEXABLE_CHARS } from "@/lib/reviewQuality";
+import { isIndexablePost } from "@/lib/postQuality";
 
 /**
  * 개별 후기 페이지(/review/[id])는 분량이 REVIEW_INDEXABLE_CHARS를 넘긴 것만 넣는다.
@@ -74,7 +75,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const { data: posts, error: postsError } = await supabase
       .from("posts")
-      .select("id, created_at")
+      .select("id, created_at, title, content")
       .order("created_at", { ascending: false })
       .limit(500);
 
@@ -83,12 +84,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     if (posts) {
-      boardUrls = posts.map((p: { id: string; created_at: string }) => ({
-        url: `${BASE_URL}/board/${p.id}`,
-        lastModified: new Date(p.created_at),
-        changeFrequency: "weekly" as const,
-        priority: 0.5,
-      }));
+      // 게시글도 후기와 같은 분량 기준을 통과한 것만 넣는다 (기준 미달은 noindex)
+      boardUrls = posts
+        .filter(isIndexablePost)
+        .map((p: { id: string; created_at: string }) => ({
+          url: `${BASE_URL}/board/${p.id}`,
+          lastModified: new Date(p.created_at),
+          changeFrequency: "weekly" as const,
+          priority: 0.5,
+        }));
+      console.log(`[sitemap] 게시글 ${posts.length}건 중 ${boardUrls.length}건이 분량 기준 통과`);
     }
   } catch (e) {
     // 게시판 URL이 통째로 빠져도 사이트맵 자체는 나가야 하므로 계속 진행하되,

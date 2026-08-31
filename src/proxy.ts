@@ -84,8 +84,8 @@ function maybeCleanup() {
   }
 }
 
-// ─── 미들웨어 ──────────────────────────────────────────────
-export function middleware(request: NextRequest) {
+// ─── 프록시 (구 미들웨어 — Next 16에서 파일/함수명이 proxy로 변경됨) ──
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ua = request.headers.get("user-agent") ?? "";
   const ip =

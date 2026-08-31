@@ -87,7 +87,7 @@ src/
 │   ├── hustleGuides.ts           # HUSTLE_GUIDES (시작 가이드, pros/cons)
 │   ├── kakaoAuth.ts              # 카카오 SDK 초기화, 유저 스토리지
 │   └── rateLimit.ts              # 간단한 API 레이트 리밋
-├── middleware.ts                  # 허니팟 리다이렉트
+├── proxy.ts                       # 봇 차단·레이트리밋 (구 middleware.ts, Next 16 컨벤션)
 scripts/
 └── generate-all-summaries.ts     # AI 요약 일괄 생성 (tsx로 직접 실행)
 ```
@@ -153,12 +153,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 NEXT_PUBLIC_KAKAO_JS_KEY
 NEXT_PUBLIC_KAKAO_REST_KEY
 NEXT_PUBLIC_KAKAO_REDIRECT_URI
+NEXT_PUBLIC_SENTRY_DSN         # 없으면 클라이언트 Sentry는 no-op
 
 # 서버 전용 (절대 NEXT_PUBLIC 금지)
 SUPABASE_SERVICE_ROLE_KEY   # supabase.server.ts 전용
 KAKAO_CLIENT_SECRET
 ANTHROPIC_API_KEY
 ADMIN_PASSWORD              # x-admin-password 헤더 검증용
+SENTRY_DSN                  # 없으면 서버 Sentry는 no-op (src/instrumentation.ts)
 ```
 
 ### 코드 품질 기준
@@ -202,7 +204,7 @@ ValidationError → 필드별 구체적 피드백
 - 에러 경계(Error Boundary) 필수 설정
 - 치명 에러는 본인 이메일/슬랙으로 즉시 알림
 - 로컬 에러: console.error + 재현 방법 주석
-- 프로덕션 에러: [미입력] — Sentry 미연동 (도입 고려)
+- 프로덕션 에러: Sentry 연동됨 (@sentry/nextjs, DSN env 없으면 no-op) — global-error.tsx가 최후 방어선
 
 ---
 
@@ -239,7 +241,6 @@ ValidationError → 필드별 구체적 피드백
 - 테스트 코드 전무 — E2E나 단위 테스트 도입 필요
 - `src/lib/mockData.ts` — 삭제 완료
 - PowerShell에서 한글 git commit 메시지 인코딩 오류 → **영문 커밋 메시지** 사용
-- Sentry 등 에러 트래킹 미연동
 
 ### 한글 커밋 메시지 주의
 PowerShell에서 한글 포함 커밋 메시지는 pathspec 에러 발생.
@@ -261,7 +262,7 @@ git commit -m "feat: free board (posts + comments)"
 - `hustle_summaries` — AI 요약 캐시 (hustle_id PK)
 - `reports` — 신고
 - `click_events` — 클릭 통계
-- `honeypot_*` — 스팸 봇 트랩용 (middleware.ts에서 처리)
+- `honeypot_*` — 스팸 봇 트랩용 (src/proxy.ts에서 처리)
 
 ### 배포 플로우
 ```

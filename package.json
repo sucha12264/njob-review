@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
+    "@sentry/nextjs": "^10.72.0",
     "@supabase/supabase-js": "^2.49.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.7.4",

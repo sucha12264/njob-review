@@ -9,7 +9,7 @@ import ReviewCard from "@/components/ReviewCard";
 import ShareButtons from "@/components/ShareButtons";
 import QuickWriteBox from "@/components/QuickWriteBox";
 import HustleQnA from "@/components/HustleQnA";
-import type { Review } from "@/lib/types";
+import { INCOME_LABELS, type IncomeRange, type Review } from "@/lib/types";
 import { COMPARE_PAIRS } from "@/lib/comparePairs";
 
 
@@ -49,6 +49,22 @@ export default function HustlePageClient({ hustle, guide, initialReviews }: Prop
     : null;
   const recommendRate = allReviews.length
     ? Math.round((allReviews.filter((r) => r.recommend).length / allReviews.length) * 100)
+    : null;
+
+  // 후기에서 집계한 실제 수익 분포 — hustle.incomeRange(운영자 추정)와 달리 경험자 데이터
+  const incomeDist = (Object.keys(INCOME_LABELS) as IncomeRange[])
+    .map((range) => ({
+      range,
+      label: INCOME_LABELS[range],
+      count: allReviews.filter((r) => r.income_range === range).length,
+    }))
+    .filter((d) => d.count > 0);
+  const topIncome =
+    incomeDist.length > 0
+      ? incomeDist.reduce((a, b) => (b.count > a.count ? b : a))
+      : null;
+  const avgWeeklyHours = allReviews.length
+    ? Math.round(allReviews.reduce((s, r) => s + r.weekly_hours, 0) / allReviews.length)
     : null;
 
   const relatedHustles = ALL_HUSTLES
@@ -299,6 +315,38 @@ export default function HustlePageClient({ hustle, guide, initialReviews }: Prop
                     <div className="text-xs text-slate-400 mt-2">총 후기 수</div>
                   </div>
                 </div>
+
+                {/* 실제 수익 분포 — 후기 데이터 집계 */}
+                {topIncome && (
+                  <div className="mt-5 pt-4 border-t border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-700 mb-3">💰 경험자들의 실제 월 수익</h3>
+                    <div className="space-y-2">
+                      {incomeDist.map((d) => {
+                        const pct = Math.round((d.count / allReviews.length) * 100);
+                        return (
+                          <div key={d.range} className="flex items-center gap-3 text-sm">
+                            <span className="w-24 flex-shrink-0 text-slate-500 text-xs">{d.label}</span>
+                            <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-indigo-400 rounded-full"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="w-16 flex-shrink-0 text-right text-xs text-slate-400">
+                              {d.count}명 ({pct}%)
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+                      후기 {allReviews.length}건 기준 가장 많은 월 수익 구간은{" "}
+                      <strong className="text-slate-700">{topIncome.label}</strong>(
+                      {topIncome.count}명, {Math.round((topIncome.count / allReviews.length) * 100)}%)
+                      {avgWeeklyHours ? `이며, 평균 주당 투입 시간은 약 ${avgWeeklyHours}시간입니다.` : "입니다."}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
