@@ -61,7 +61,8 @@ src/
 │   │   ├── post-comments/        # GET POST / [id]/
 │   │   ├── hustle-questions/     # GET POST / [id]/ [id]/answers/
 │   │   ├── hustle-answers/       # [id]/ DELETE (작성자 본인)
-│   │   ├── ai-summary/           # GET(캐시) POST(생성+저장)
+│   │   │   # (AI 요약 런타임 API는 비용 문제로 삭제됨 — 생성은 batch 스크립트로만,
+│   │   │   #  hustle/[id]/page.tsx가 hustle_summaries를 읽어 정적 렌더링)
 │   │   ├── click/                # POST (클릭 이벤트)
 │   │   ├── report/               # POST (신고)
 │   │   ├── upload/               # POST (이미지 → Supabase Storage)

@@ -5,7 +5,7 @@ import { HUSTLE_GUIDES } from "@/lib/hustleGuides";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import HustlePageClient from "./HustlePageClient";
 import { BASE_URL } from "@/lib/constants";
-import type { Review } from "@/lib/types";
+import type { HustleSummary, Review } from "@/lib/types";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -79,6 +79,14 @@ export default async function HustlePage({ params }: Props) {
     )
     .eq("hustle_id", id)
     .order("created_at", { ascending: false });
+
+  // AI 요약 — 수동 배치(scripts/generate-all-summaries.ts)가 채운 캐시를 읽기만 한다.
+  // 런타임에 Anthropic API를 호출하지 않으므로 트래픽이 늘어도 API 비용은 0이다.
+  const { data: summaryRow } = await supabaseAdmin
+    .from("hustle_summaries")
+    .select("hustle_id, verdict, summary, pros, cons, best_for, review_count, updated_at")
+    .eq("hustle_id", id)
+    .maybeSingle();
 
   const reviewList = (reviews ?? []) as Review[];
   const reviewCount = reviewList.length;
@@ -210,7 +218,12 @@ export default async function HustlePage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <HustlePageClient hustle={hustle} guide={guide} initialReviews={reviewList} />
+      <HustlePageClient
+        hustle={hustle}
+        guide={guide}
+        initialReviews={reviewList}
+        aiSummary={(summaryRow as HustleSummary | null) ?? null}
+      />
     </>
   );
 }

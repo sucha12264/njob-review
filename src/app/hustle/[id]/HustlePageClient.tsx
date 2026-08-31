@@ -9,7 +9,7 @@ import ReviewCard from "@/components/ReviewCard";
 import ShareButtons from "@/components/ShareButtons";
 import QuickWriteBox from "@/components/QuickWriteBox";
 import HustleQnA from "@/components/HustleQnA";
-import { INCOME_LABELS, type IncomeRange, type Review } from "@/lib/types";
+import { INCOME_LABELS, type HustleSummary, type IncomeRange, type Review } from "@/lib/types";
 import { COMPARE_PAIRS } from "@/lib/comparePairs";
 
 
@@ -32,9 +32,17 @@ interface Props {
   guide: HustleGuide | null;
   /** 서버에서 미리 조회한 이 부업의 전체 후기 — 초기 HTML에 후기 본문을 포함시켜 색인 가능하게 만든다 */
   initialReviews: Review[];
+  /** 수동 배치가 생성한 AI 요약 캐시 (없으면 섹션 자체를 숨긴다) */
+  aiSummary: HustleSummary | null;
 }
 
-export default function HustlePageClient({ hustle, guide, initialReviews }: Props) {
+const VERDICT_STYLE: Record<HustleSummary["verdict"], { bg: string; badge: string; icon: string }> = {
+  긍정적: { bg: "bg-green-50 border-green-200", badge: "bg-green-100 text-green-700", icon: "✅" },
+  중립: { bg: "bg-amber-50 border-amber-200", badge: "bg-amber-100 text-amber-700", icon: "⚖️" },
+  부정적: { bg: "bg-red-50 border-red-200", badge: "bg-red-100 text-red-700", icon: "⚠️" },
+};
+
+export default function HustlePageClient({ hustle, guide, initialReviews, aiSummary }: Props) {
   const id = hustle.id;
   const { reviews } = useStore();
 
@@ -289,6 +297,49 @@ export default function HustlePageClient({ hustle, guide, initialReviews }: Prop
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* AI 후기 분석 — 배치가 생성한 캐시를 정적으로 렌더링 (런타임 API 호출 없음) */}
+            {aiSummary && (
+              <div className={`card p-5 border ${VERDICT_STYLE[aiSummary.verdict].bg}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                    🤖 AI 후기 분석
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${VERDICT_STYLE[aiSummary.verdict].badge}`}>
+                      {VERDICT_STYLE[aiSummary.verdict].icon} {aiSummary.verdict}
+                    </span>
+                  </h2>
+                  <span className="text-[10px] text-slate-400">
+                    후기 {aiSummary.review_count}건 분석
+                  </span>
+                </div>
+                <p className="text-sm text-slate-700 leading-relaxed mb-4">{aiSummary.summary}</p>
+                <div className="grid sm:grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <p className="text-xs font-semibold text-green-600 mb-1.5">👍 주요 장점</p>
+                    <ul className="space-y-1">
+                      {aiSummary.pros.map((p, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600">
+                          <span className="text-green-500 mt-0.5">✓</span>{p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-red-500 mb-1.5">👎 주의할 점</p>
+                    <ul className="space-y-1">
+                      {aiSummary.cons.map((c, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600">
+                          <span className="text-red-400 mt-0.5">✗</span>{c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="text-xs bg-white/70 rounded-lg px-3 py-2 text-slate-600 border border-slate-100">
+                  💡 <strong>추천 대상:</strong> {aiSummary.best_for}
+                </div>
               </div>
             )}
 

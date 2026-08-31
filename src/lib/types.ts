@@ -127,6 +127,18 @@ export interface ReviewUpdate {
   content: string;
 }
 
+// ─── AI 요약 (hustle_summaries — 수동 배치로만 생성, 런타임 API 호출 없음) ──
+export interface HustleSummary {
+  hustle_id: string;
+  verdict: "긍정적" | "중립" | "부정적";
+  summary: string;
+  pros: string[];
+  cons: string[];
+  best_for: string;
+  review_count: number;
+  updated_at: string;
+}
+
 // ─── 부업별 Q&A ──────────────────────────────────────────
 export interface HustleQuestion {
   id: string;

@@ -58,7 +58,8 @@ async function generateSummary(hustleId: string, hustleName: string) {
 
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5",  // 배치는 저렴한 모델 사용
-    max_tokens: 600,
+    // 600으로는 한국어 JSON이 중간에 잘려 "Unterminated string" 파싱 에러가 났다
+    max_tokens: 2000,
     system:
       "당신은 N잡 부업 분석 전문가입니다. 실제 경험자들의 후기를 분석해 핵심만 요약합니다. 반드시 유효한 JSON만 응답하세요. 다른 텍스트는 절대 포함하지 마세요.",
     messages: [
@@ -68,6 +69,10 @@ async function generateSummary(hustleId: string, hustleName: string) {
       },
     ],
   });
+
+  if (message.stop_reason === "max_tokens") {
+    throw new Error("응답이 max_tokens에서 잘림 — max_tokens를 더 올려야 함");
+  }
 
   const content = message.content[0];
   if (content.type !== "text") throw new Error("Invalid response");
@@ -141,7 +146,8 @@ async function main() {
         done++;
       }
     } catch (err) {
-      console.log(`❌ 실패: ${err instanceof Error ? err.message : String(err)}`);
+      // Supabase 에러는 Error가 아닌 평범한 객체라 String()하면 [object Object]가 된다
+      console.log(`❌ 실패: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
       failed++;
     }
 
